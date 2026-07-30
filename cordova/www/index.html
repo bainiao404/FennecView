@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FennecView Bootstrap</title>
+</head>
+<body>
+    <script src="cordova.js"></script>
+    <script>
+        document.addEventListener("deviceready", function () {
+            if (window.StatusBar) {
+                StatusBar.hide();
+            }
+            if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                window.screen.orientation.lock('landscape').catch(function (error) {
+                    console.error("Failed to lock orientation:", error);
+                });
+            }
+            cordovaPrepare(function () {
+                let targetUrl = "app/FennecView/www/index.html";
+                if (window.cordova && cordova.file && cordova.file.applicationDirectory) {
+                    targetUrl = cordova.file.applicationDirectory + "www/app/FennecView/www/index.html";
+                }
+                window.location.href = targetUrl;
+            });
+        });
+
+        function cordovaPrepare(callback) {
+            // 防御性检查：如果权限插件未加载成功，直接进行回调跳转
+            if (!window.plugins || !window.plugins.Permission) {
+                console.warn("Permission plugin is not available. Proceeding to GUI.");
+                if (callback) {
+                    callback();
+                }
+                return;
+            }
+
+            // 获取和检测权限
+            getPermission([
+                "android.permission.WRITE_EXTERNAL_STORAGE",
+                "android.permission.READ_EXTERNAL_STORAGE"
+            ])
+            .then(function () {
+                if (callback) {
+                    callback();
+                }
+            })
+            .catch(function () {
+                setTimeout(function () {
+                    cordovaPrepare(callback);
+                }, 1000);
+            });
+        }
+
+        // 检测和获取权限
+        function getPermission(permission) {
+            return new Promise((resolve, reject) => {
+                permission = Array.isArray(permission) ? permission : [permission];
+                let Permission = window.plugins.Permission;
+                Permission.has(
+                    permission,
+                    function (results) {
+                        let arrP = [];
+                        for (let i = 0; i < permission.length; i++) {
+                            if (!results[permission[i]]) {
+                                let prm = new Promise((resolvel, rejectl) => {
+                                    Permission.request(
+                                        permission[i],
+                                        function (results) {
+                                            if (results[permission[i]] || results[permission]) {
+                                                resolvel();
+                                            } else {
+                                                rejectl();
+                                            }
+                                        },
+                                        alert
+                                    );
+                                });
+                                arrP.push(prm);
+                            }
+                        }
+                        Promise.all(arrP)
+                            .then(() => {
+                                resolve();
+                            })
+                            .catch(() => {
+                                reject();
+                            });
+                    },
+                    alert
+                );
+            });
+        }
+    </script>
+</body>
+</html>

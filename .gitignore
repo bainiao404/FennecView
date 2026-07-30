@@ -16,6 +16,10 @@ coverage
 
 /cypress/videos/
 /cypress/screenshots/
+/cordova/www/*
+!/cordova/www/index.html
+/cordova/platforms/
+/cordova/plugins/
 
 # Editor directories and files
 .vscode/*
