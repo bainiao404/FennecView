@@ -1,0 +1,174 @@
+/* Dark Industrial Theme Variables */
+:root {
+  --bg-dark-app: #121212;
+  --bg-dark-panel: #1e1e1e;
+  --bg-dark-sidebar: #252526;
+  --bg-dark-input: #2d2d2d;
+  --bg-dark-hover: #333333;
+  --bg-dark-active: #0e639c; /* VS Code Steel Blue */
+  
+  --border-color: #333333;
+  --border-light: #444444;
+  
+  --text-primary: #cccccc;
+  --text-secondary: #858585;
+  --text-active: #ffffff;
+  
+  --accent-orange: #d97706;
+}
+
+/* Custom Scrollbar Styles for Dark Theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #3e3e3e;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4f4f4f;
+}
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+/* Global Reset overrides for industrial look */
+body {
+  font-family: Consolas, "Courier New", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-dark-app);
+  color: var(--text-primary);
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+/* Flat Panel Styles */
+.ind-panel {
+  background-color: var(--bg-dark-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.ind-header {
+  padding: 8px 12px;
+  background-color: var(--bg-dark-sidebar);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--text-active);
+}
+
+.ind-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+/* Ind inputs & controls */
+.ind-input-text {
+  width: 100%;
+  padding: 6px 10px;
+  background-color: var(--bg-dark-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-active);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.ind-input-text:focus {
+  outline: none;
+  border-color: var(--bg-dark-active);
+}
+
+.ind-range {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--bg-dark-input);
+  outline: none;
+  margin: 10px 0;
+}
+.ind-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--bg-dark-active);
+  cursor: pointer;
+  border: none;
+}
+
+.ind-btn {
+  background-color: var(--bg-dark-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  text-align: center;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.ind-btn:hover {
+  background-color: var(--bg-dark-hover);
+  color: var(--text-active);
+  border-color: var(--border-light);
+}
+.ind-btn:active {
+  background-color: var(--bg-dark-active);
+  color: var(--text-active);
+}
+.ind-ind-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Checkboxes */
+.ind-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin: 6px 0;
+}
+.ind-checkbox-label input {
+  cursor: pointer;
+  accent-color: var(--bg-dark-active);
+}
+
+/* List Items */
+.ind-list-box {
+  background-color: var(--bg-dark-input);
+  border: 1px solid var(--border-color);
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 5px 0;
+}
+
+.ind-list-item {
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  transition: background 0.1s ease;
+}
+.ind-list-item:hover {
+  background-color: var(--bg-dark-hover);
+  color: var(--text-active);
+}
+.ind-list-item.active {
+  background-color: var(--bg-dark-active);
+  color: var(--text-active);
+}

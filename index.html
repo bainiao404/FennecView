@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html style="background-color: rgba(255, 255, 255, 0.0)">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,minimal-ui" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-touch-fullscreen" content="no" />
+  <link rel="icon" href="/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="../../../cordova.js"></script>
+  <!-- 静态依赖库 -->
+  <script src="assets/libs/axios.min.js"></script>
+  <script src="assets/libs/live2d.min.js"></script>
+  <script src="assets/libs/live2dcubismcore.min.js"></script>
+  <script src="assets/libs/mp4box.all.min.js"></script>
+  <script src="assets/libs/gif/gif.js"></script>
+  <!-- 样式已整合到 main.js 导入 of fennec-view.css，摆脱外部 0.css/default.css/0_pc.css -->
+  <!-- FennecView 脚本已通过 Vue 模块加载，摆脱 script/ 依赖 -->
+  <title>FennecView</title>
+
+</head>
+
+<body style="background: rgb(0, 0, 0, 0);margin: 0px;overflow: hidden;">
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
