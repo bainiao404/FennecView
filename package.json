@@ -16,7 +16,6 @@
         "format": "prettier --write src/"
     },
     "dependencies": {
-        "@electron/remote": "^2.1.2",
         "axios": "^1.13.1",
         "jszip": "^3.10.1",
         "pinia": "^3.0.3",

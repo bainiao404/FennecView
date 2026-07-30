@@ -27,14 +27,43 @@ function createWindow() {
         }
     })
 
+    // 监听窗口最大化与还原事件，并同步发送给渲染进程
+    win.on('maximize', () => win.webContents.send('window-maximize-state-change', true))
+    win.on('unmaximize', () => win.webContents.send('window-maximize-state-change', false))
+
     // 读取解压同目录下的 index.html
     win.loadFile(path.join(__dirname, 'www', 'index.html'))
 }
+
+// 注册窗口控制 IPC 统一监听
+ipcMain.handle('window-control', async (event, action) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return
+    switch (action) {
+        case 'minimize':
+            win.minimize()
+            break
+        case 'toggle-maximize':
+            if (win.isMaximized()) win.unmaximize()
+            else win.maximize()
+            break
+        case 'close':
+            win.close()
+            break
+        case 'is-maximized':
+            return win.isMaximized()
+    }
+})
 
 // 注册选择对话框的 IPC 监听
 ipcMain.handle('show-open-dialog', async (event, options) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     return await dialog.showOpenDialog(win, options)
+})
+
+ipcMain.handle('show-save-dialog', async (event, options) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return await dialog.showSaveDialog(win, options)
 })
 
 // 注册拖拽开始 of IPC 监听

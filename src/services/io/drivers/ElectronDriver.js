@@ -8,11 +8,11 @@ export class ElectronDriver extends IODriver {
         return require('fs');
     }
 
-    getRemote() {
+    getIpcRenderer() {
         if (typeof window !== 'undefined' && window.require) {
-            return window.require('@electron/remote');
+            return window.require('electron').ipcRenderer;
         }
-        return require('@electron/remote');
+        return require('electron').ipcRenderer;
     }
 
     async read(path) {
@@ -35,8 +35,7 @@ export class ElectronDriver extends IODriver {
     }
 
     async pickFile(options = {}) {
-        const { dialog } = this.getRemote();
-        const result = await dialog.showOpenDialog({
+        const result = await this.getIpcRenderer().invoke('show-open-dialog', {
             title: options.title || 'Select File',
             filters: options.filters || [],
             properties: ['openFile']
@@ -48,8 +47,7 @@ export class ElectronDriver extends IODriver {
     }
 
     async pickDirectory(options = {}) {
-        const { dialog } = this.getRemote();
-        const result = await dialog.showOpenDialog({
+        const result = await this.getIpcRenderer().invoke('show-open-dialog', {
             title: options.title || 'Select Directory',
             properties: ['openDirectory']
         });
@@ -60,8 +58,7 @@ export class ElectronDriver extends IODriver {
     }
 
     async pickSaveFile(options = {}) {
-        const { dialog } = this.getRemote();
-        const result = await dialog.showSaveDialog({
+        const result = await this.getIpcRenderer().invoke('show-save-dialog', {
             title: options.title || 'Save File',
             defaultPath: options.defaultPath || 'project.fv',
             filters: options.filters || []

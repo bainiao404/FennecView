@@ -25,63 +25,52 @@ import { RemoveIcon, CloseIcon, FullscreenIcon, FullscreenExitIcon, MinusRectang
 
 defineEmits(['enter-mini'])
 
-let remote = null
+let ipcRenderer = null
 try {
     if (typeof window !== 'undefined' && window.require) {
-        remote = window.require('@electron/remote')
+        ipcRenderer = window.require('electron').ipcRenderer
     }
 } catch (e) {
-    console.warn('Electron remote module not available')
+    console.warn('Electron IPC not available')
 }
 
 const isMaximized = ref(false)
 
 function minimizeWindow() {
-    if (!remote) return
-    const win = remote.getCurrentWindow()
-    win.minimize()
+    if (!ipcRenderer) return
+    ipcRenderer.invoke('window-control', 'minimize')
 }
 
 function toggleMaximize() {
-    if (!remote) return
-    const win = remote.getCurrentWindow()
-    if (win.isMaximized()) {
-        win.unmaximize()
-    } else {
-        win.maximize()
-    }
+    if (!ipcRenderer) return
+    ipcRenderer.invoke('window-control', 'toggle-maximize')
 }
 
 function closeWindow() {
-    if (!remote) return
-    const win = remote.getCurrentWindow()
-    win.close()
+    if (!ipcRenderer) return
+    ipcRenderer.invoke('window-control', 'close')
 }
 
-function updateMaximizeState() {
-    if (!remote) return
-    const win = remote.getCurrentWindow()
-    isMaximized.value = win.isMaximized()
+const handleMaximizeStateChange = (event, state) => {
+    isMaximized.value = state
 }
 
 onMounted(() => {
-    if (!remote) return
+    if (!ipcRenderer) return
     try {
-        const win = remote.getCurrentWindow()
-        isMaximized.value = win.isMaximized()
-        win.on('maximize', updateMaximizeState)
-        win.on('unmaximize', updateMaximizeState)
+        ipcRenderer.invoke('window-control', 'is-maximized').then(state => {
+            isMaximized.value = state
+        })
+        ipcRenderer.on('window-maximize-state-change', handleMaximizeStateChange)
     } catch (e) {
         console.error(e)
     }
 })
 
 onUnmounted(() => {
-    if (!remote) return
+    if (!ipcRenderer) return
     try {
-        const win = remote.getCurrentWindow()
-        win.off('maximize', updateMaximizeState)
-        win.off('unmaximize', updateMaximizeState)
+        ipcRenderer.off('window-maximize-state-change', handleMaximizeStateChange)
     } catch (e) {}
 })
 </script>
