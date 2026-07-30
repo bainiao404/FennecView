@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
         },
         build: {
             outDir: outDir,
-            assetsDir: 'assetsVue',
+            assetsDir: 'assets',
             sourcemap: true,
         },
     }

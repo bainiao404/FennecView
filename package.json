@@ -10,7 +10,7 @@
         "build:web": "vite build --mode web",
         "build:electron": "npm run build:web && node scripts/build-electron.cjs",
         "build:cordova": "npm run build:web && node scripts/build-cordova.cjs",
-        "build:bainiaogkd": "vite build && rimraf ..\\..\\app\\FennecView\\www\\assetsVue && xcopy dist ..\\..\\app\\FennecView\\www\\ /E /I /Y",
+        "build:bainiaogkd": "vite build && rimraf ..\\..\\app\\FennecView\\www\\assets && xcopy dist ..\\..\\app\\FennecView\\www\\ /E /I /Y",
         "preview": "vite preview",
         "lint": "eslint . --fix",
         "format": "prettier --write src/"
