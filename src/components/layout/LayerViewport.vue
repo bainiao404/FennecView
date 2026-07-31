@@ -12,6 +12,7 @@ import BatchRenameView from '@/views/BatchRenameView.vue'
 import SpineConvertView from '@/views/SpineConvertView.vue'
 import AboutView from '@/views/AboutView.vue'
 import ImportSpritesheetView from '@/views/ImportSpritesheetView.vue'
+import ImportPrepareView from '@/views/ImportPrepareView.vue'
 
 import '@/assets/styles/industrial-dark.css'
 
@@ -34,6 +35,7 @@ const componentsMap = {
     SpineConvertView,
     AboutView,
     ImportSpritesheetView,
+    ImportPrepareView,
 }
 
 // Convert input description direction to CSS transition name
@@ -68,6 +70,7 @@ function getLayerTitle(name) {
         BinaryViewer: i18nStore.t('binaryViewerTab'),
         ObjectDetails: i18nStore.t('objectDetailsTab'),
         ImportSpritesheetView: i18nStore.locale === 'zh' ? '导入单图精灵表' : 'Import Grid Spritesheet',
+        ImportPrepareView: i18nStore.locale === 'zh' ? '资源导入准备' : 'Import Preparation',
     }
     return titles[name] || name
 }
