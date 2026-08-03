@@ -11,8 +11,8 @@ import ExportGifView from '@/views/ExportGifView.vue'
 import BatchRenameView from '@/views/BatchRenameView.vue'
 import SpineConvertView from '@/views/SpineConvertView.vue'
 import AboutView from '@/views/AboutView.vue'
-import ImportSpritesheetView from '@/views/ImportSpritesheetView.vue'
 import ImportPrepareView from '@/views/ImportPrepareView.vue'
+import DragDropResolveView from '@/views/DragDropResolveView.vue'
 
 import '@/assets/styles/industrial-dark.css'
 
@@ -34,8 +34,8 @@ const componentsMap = {
     BatchRenameView,
     SpineConvertView,
     AboutView,
-    ImportSpritesheetView,
     ImportPrepareView,
+    DragDropResolveView,
 }
 
 // Convert input description direction to CSS transition name
@@ -69,8 +69,8 @@ function getLayerTitle(name) {
         SingleFileExporter: 'Export Asset',
         BinaryViewer: i18nStore.t('binaryViewerTab'),
         ObjectDetails: i18nStore.t('objectDetailsTab'),
-        ImportSpritesheetView: i18nStore.locale === 'zh' ? '导入单图精灵表' : 'Import Grid Spritesheet',
         ImportPrepareView: i18nStore.locale === 'zh' ? '资源导入准备' : 'Import Preparation',
+        DragDropResolveView: i18nStore.locale === 'zh' ? '拖拽内容解析' : 'Resolve Drag & Drop',
     }
     return titles[name] || name
 }

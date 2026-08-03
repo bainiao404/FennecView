@@ -7,15 +7,7 @@ import FennecView from '@/fennec-view/FennecView'
  */
 export const useUIStore = defineStore('ui', {
   state: () => ({
-    glassmorphismEnabled: (() => {
-      const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const isCordova = typeof window !== 'undefined' && !!window.cordova;
-      const saved = localStorage.getItem('glassmorphismEnabled');
-      if (saved !== null) {
-        return saved === 'true';
-      }
-      return !(isMobile || isCordova);
-    })(),
+
 
     antialiasEnabled: (() => {
       const saved = localStorage.getItem('antialiasEnabled');
@@ -272,10 +264,7 @@ export const useUIStore = defineStore('ui', {
       this.canvasDisplay.progressBar = progress
     },
 
-    setGlassmorphismEnabled(enabled) {
-      this.glassmorphismEnabled = enabled
-      localStorage.setItem('glassmorphismEnabled', enabled ? 'true' : 'false')
-    },
+
 
     setAntialiasEnabled(enabled) {
       this.antialiasEnabled = enabled
@@ -547,6 +536,26 @@ export const useUIStore = defineStore('ui', {
       }
       _get(obj)
       return result
+    },
+
+    updateCurrentNodeProperty(property, value, index = undefined) {
+      if (FennecView && typeof FennecView.updateNodeProperty === 'function') {
+        if (index !== undefined && index !== null) {
+          FennecView.updateNodeProperty(property, value, index)
+        } else {
+          FennecView.updateNodeProperty(property, value)
+        }
+      }
+    },
+
+    syncCurrentNodeLive2D(parametersList, partsList) {
+      if (FennecView && FennecView.canvas && FennecView.canvas.box && this.propertyPanel.currentNode) {
+        const index = this.propertyPanel.currentNode.index
+        const node = FennecView.canvas.box.children[index]
+        if (node && node.nodeData && typeof node.nodeData.syncLive2DParametersAndParts === 'function') {
+          node.nodeData.syncLive2DParametersAndParts(parametersList, partsList)
+        }
+      }
     },
 
     openCordovaFileView(options = {}) {

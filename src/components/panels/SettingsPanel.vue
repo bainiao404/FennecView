@@ -118,30 +118,11 @@ function setBgAlpha(e) {
             </div>
         </div>
 
-        <div class="panel-section">
-            <div class="section-title">{{ i18n.t('glassmorphismEffect') }}</div>
-            <div class="glass-toggle">
-                <div 
-                    class="ind-btn toggle-btn" 
-                    :class="{ active: uiStore.glassmorphismEnabled }"
-                    @click="uiStore.setGlassmorphismEnabled(true)"
-                >
-                    {{ i18n.t('optionEnabled') }}
-                </div>
-                <div 
-                    class="ind-btn toggle-btn" 
-                    :class="{ active: !uiStore.glassmorphismEnabled }"
-                    @click="uiStore.setGlassmorphismEnabled(false)"
-                >
-                    {{ i18n.t('optionDisabled') }}
-                </div>
-            </div>
-        </div>
 
         <div class="panel-section">
             <div class="section-title">
                 {{ i18n.t('pixiAntialias') }}
-                <span class="value-badge" style="background-color: var(--bg-dark-active); color: var(--text-active);">
+                <span class="value-badge reload-badge">
                     {{ i18n.t('reloadRequired') }}
                 </span>
             </div>
@@ -163,9 +144,9 @@ function setBgAlpha(e) {
             </div>
         </div>
 
-        <div class="panel-section about-section" style="margin-top: 24px;">
-            <button class="ind-btn about-btn" @click="openAbout" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: bold; background: linear-gradient(135deg, var(--bg-dark-input), rgba(30, 30, 30, 0.5)); border-color: var(--border-light);">
-                <span style="font-size: 16px;">ℹ</span>
+        <div class="panel-section about-section">
+            <button class="ind-btn about-btn" @click="openAbout">
+                <span class="about-icon">ℹ</span>
                 {{ i18n.t('aboutTab') }}
             </button>
         </div>
@@ -197,6 +178,11 @@ function setBgAlpha(e) {
     background-color: var(--bg-dark-input);
     padding: 1px 5px;
     border-radius: 2px;
+}
+
+.reload-badge {
+    background-color: var(--bg-dark-active);
+    color: var(--text-active);
 }
 
 .color-row {
@@ -234,5 +220,24 @@ function setBgAlpha(e) {
     background-color: var(--bg-dark-active);
     color: var(--text-active);
     border-color: var(--bg-dark-active);
+}
+
+.about-section {
+    margin-top: 24px;
+}
+
+.about-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: bold;
+    background: linear-gradient(135deg, var(--bg-dark-input), rgba(30, 30, 30, 0.5));
+    border-color: var(--border-light);
+}
+
+.about-icon {
+    font-size: 16px;
 }
 </style>

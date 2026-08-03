@@ -2,25 +2,18 @@
 import { useUIStore } from '@/stores/uiStore'
 import { useI18nStore } from '@/stores/i18n'
 import { computed } from 'vue'
-import FennecView from '@/fennec-view/FennecView'
 
 const uiStore = useUIStore()
 const i18n = useI18nStore()
 
 const propertyPanel = computed(() => uiStore.propertyPanel)
 
-const activeTab = computed(() => uiStore.activeTab)
-
 function handleAnimationClick(animationName) {
-    if (FennecView?.updateNodeProperty) {
-        FennecView.updateNodeProperty('animation', animationName)
-    }
+    uiStore.updateCurrentNodeProperty('animation', animationName)
 }
 
 function handleSkinClick(skinName) {
-    if (FennecView?.updateNodeProperty) {
-        FennecView.updateNodeProperty('skin', skinName)
-    }
+    uiStore.updateCurrentNodeProperty('skin', skinName)
 }
 
 // Helper to check currently active animation & skin to highlight them
@@ -41,9 +34,7 @@ const live2dTransitionMode = computed({
         return uiStore.propertyPanel.currentNode?.transitionMode || 'loop'
     },
     set(value) {
-        if (FennecView?.updateNodeProperty) {
-            FennecView.updateNodeProperty('live2dTransitionMode', value)
-        }
+        uiStore.updateCurrentNodeProperty('live2dTransitionMode', value)
     }
 })
 
@@ -52,9 +43,7 @@ const live2dFadeIn = computed({
         return uiStore.propertyPanel.currentNode?.live2dFadeIn !== undefined ? uiStore.propertyPanel.currentNode.live2dFadeIn : 0.1
     },
     set(value) {
-        if (FennecView?.updateNodeProperty) {
-            FennecView.updateNodeProperty('live2dFadeIn', value)
-        }
+        uiStore.updateCurrentNodeProperty('live2dFadeIn', value)
     }
 })
 
@@ -63,9 +52,7 @@ const live2dFadeOut = computed({
         return uiStore.propertyPanel.currentNode?.live2dFadeOut !== undefined ? uiStore.propertyPanel.currentNode.live2dFadeOut : 0.1
     },
     set(value) {
-        if (FennecView?.updateNodeProperty) {
-            FennecView.updateNodeProperty('live2dFadeOut', value)
-        }
+        uiStore.updateCurrentNodeProperty('live2dFadeOut', value)
     }
 })
 </script>

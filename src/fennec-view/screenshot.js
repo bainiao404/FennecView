@@ -43,6 +43,7 @@ const screenshotMethods = {
         let canvas = this.canvas;
         let app = canvas.app;
         let background = canvas.background;
+        const activeNode = this.click.current;
         this.setUI(false);
         let box = canvas.box;
         let world = canvas.world;
@@ -80,6 +81,9 @@ const screenshotMethods = {
             screenshot = finalCanvas;
         }
         world.scale.set(scale);
+        if (activeNode && activeNode.setDebug) {
+            activeNode.setDebug(true);
+        }
         this.setUI(true);
         switch (type) {
             case "blob":
@@ -91,7 +95,7 @@ const screenshotMethods = {
             case "canvas":
                 return screenshot;
             case "img":
-                let base64 = screenshot.toDataURL("image/png");
+                const base64 = screenshot.toDataURL("image/png");
                 const img = document.createElement("img");
                 img.src = base64;
                 return img;

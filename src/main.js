@@ -2,15 +2,18 @@ import { createApp } from 'vue'
 import TDesign from 'tdesign-vue-next'
 import { createPinia } from 'pinia'
 import * as PIXINamespace from 'pixi.js'
-import { Live2DModel, Live2DPlugin, MotionPreloadStrategy } from 'untitled-pixi-live2d-engine'
+import { Live2DModel, MotionPreloadStrategy } from 'untitled-pixi-live2d-engine'
 import SimpleSpine from 'simple-pixi-spine'
 import GKD from '@/assets/gkd-js-0.2'
 
+// Import PixiJS extensions and plugins configuration to keep main.js clean
+import '@/fennec-view/pixiPlugins'
+
+// Initialize FennecView Plugin and Node Registry
+import '@/plugins/initRegistry'
+
 // Create a mutable wrapper containing all PIXI exports
 const PIXI = { ...PIXINamespace }
-
-// Register Live2D plugin in PixiJS v8
-PIXINamespace.extensions.add(Live2DPlugin)
 PIXI.live2d = { Live2DModel, MotionPreloadStrategy }
 
 // Setup flat filter mapping for compatibility

@@ -7,14 +7,13 @@ import { useUIStore } from '@/stores/uiStore.js'
 import FennecView from '@/fennec-view/FennecView'
 import CordovaFileView from '@/views/CordovaFileView.vue'
 
+import { platformService } from '@/services/platform/PlatformService'
+
 const layerStore = useLayerStore()
 const uiStore = useUIStore()
 
-const isElectron =
-    typeof window !== 'undefined' &&
-    (!!window.process || (window.navigator && window.navigator.userAgent.indexOf('Electron') !== -1))
-
-const isCordova = typeof window !== 'undefined' && !!window.cordova
+const isElectron = platformService.isElectron()
+const isCordova = platformService.isCordova()
 
 // Automatically display Home page when there are no visible layers
 watch(
@@ -69,6 +68,10 @@ onMounted(() => {
 
     // Keyboard ESC key back listener
     window.addEventListener('keydown', onKeyDown, false)
+
+    // Global drag and drop listeners to support Chrome and prevent default browser redirect behaviors
+    window.addEventListener('dragover', handleDragOver, false)
+    window.addEventListener('drop', handleFileDrop, false)
 })
 
 onUnmounted(() => {
@@ -77,9 +80,13 @@ onUnmounted(() => {
     }
     document.removeEventListener('backbutton', onBackGesture)
     window.removeEventListener('keydown', onKeyDown)
+
+    window.removeEventListener('dragover', handleDragOver)
+    window.removeEventListener('drop', handleFileDrop)
 })
 
 function handleFileDrop(e) {
+    e.preventDefault()
     if (FennecView?.fileHandleDrop) FennecView.fileHandleDrop(e)
 }
 
@@ -89,7 +96,7 @@ function handleDragOver(e) {
 </script>
 
 <template>
-    <div id="game_window" class="app-shell" :class="{ 'is-electron': isElectron, 'no-glassmorphism': !uiStore.glassmorphismEnabled }" @drop="handleFileDrop" @dragover="handleDragOver">
+    <div id="game_window" class="app-shell" :class="{ 'is-electron': isElectron }">
         <!-- Electron Drag Titlebar -->
         <TitleBar v-if="isElectron"></TitleBar>
 

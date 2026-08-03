@@ -2,18 +2,8 @@ import { createFennecViewCanvas } from '../FennecViewCanvas'
 import { isElectron } from '@/assets/gkd-js-0.2/env.js'
 import axios from 'axios'
 import { useUIStore } from '@/stores/uiStore'
+import { nodeRegistry } from '@/fennec-view/core/NodeRegistry'
 const PIXI = window.PIXI
-
-async function loadTexture(url) {
-    let loadOptions = url
-    if (url && typeof url === 'string' && url.startsWith('blob:')) {
-        loadOptions = {
-            src: url,
-            loadParser: 'loadTextures'
-        }
-    }
-    return await PIXI.Assets.load(loadOptions)
-}
 
 export default {
     setUI: function (state) {
@@ -83,255 +73,21 @@ export default {
 
         let nodes = config.box.node
         let mCacheNode = []
-        for (var i = 0; i < nodes.length; i++) {
-            let node = nodes[i]
-            switch (node.type) {
-                case 'spine': {
-                    let alphaMode = node.textureMode !== undefined ? node.textureMode : (node.isPremultiplied ? 2 : 0)
-                    let spineNodes = await t.addSpineNode(['export/' + node.path + '/' + node.name], alphaMode)
-                    let mNode = spineNodes[0]
-                    if (mNode) {
-                        if (node.scaleX !== undefined && node.scaleY !== undefined) {
-                            mNode.scale.set(node.scaleX, node.scaleY)
-                        } else {
-                            mNode.scale.set(node.scale)
-                        }
-                        mNode.x = node.x
-                        mNode.y = node.y
-                        if (node.rotation !== undefined) mNode.rotation = node.rotation
-                        if (node.alpha !== undefined) mNode.alpha = node.alpha
-                        t.updateNodeProperty('skin', node.skin)
-                        t.updateNodeProperty('animation', node.animation)
-                        node.slots.forEach((e) => {
-                            t.updateNodeProperty('slotsAlpha', e)
-                        })
-                        node.slotsAttachment.forEach((e) => {
-                            t.updateNodeProperty('attachment', [e.slotName, e.attachmentName])
-                        })
-                        mCacheNode.push(mNode)
-                    }
-                    break
+        for (let i = 0; i < nodes.length; i++) {
+            let nodeConfig = nodes[i]
+            const def = nodeRegistry.get(nodeConfig.type);
+            if (def && def.previewLoader) {
+                try {
+                    await def.previewLoader.call(t, nodeConfig, mCacheNode);
+                } catch (loadErr) {
+                    console.error(`Error loading preview node of type ${nodeConfig.type}:`, loadErr);
                 }
-                case 'live2d': {
-                    let spineNodes = await t.addSpineNode(['export/' + node.path + '/' + node.name])
-                    let mNode = spineNodes[0]
-                    if (mNode) {
-                        if (node.scaleX !== undefined && node.scaleY !== undefined) {
-                            mNode.scale.set(node.scaleX, node.scaleY)
-                        } else {
-                            mNode.scale.set(node.scale)
-                        }
-                        mNode.x = node.x
-                        mNode.y = node.y
-                        if (node.rotation !== undefined) mNode.rotation = node.rotation
-                        if (node.alpha !== undefined) mNode.alpha = node.alpha
-                        if (node.skin) {
-                            t.updateNodeProperty('skin', node.skin)
-                        }
-                        if (node.animation) {
-                            t.updateNodeProperty('animation', node.animation)
-                        }
-                        if (node.transitionMode && mNode.nodeData) {
-                            mNode.nodeData.transitionMode = node.transitionMode
-                        }
-                        if (node.hasOwnProperty('live2dFadeIn') && mNode.nodeData) {
-                            mNode.nodeData.live2dFadeIn = node.live2dFadeIn
-                        }
-                        if (node.hasOwnProperty('live2dFadeOut') && mNode.nodeData) {
-                            mNode.nodeData.live2dFadeOut = node.live2dFadeOut
-                        }
-                        if (node.hasOwnProperty('live2dTracking') && mNode.nodeData) {
-                            mNode.nodeData.live2dTracking = node.live2dTracking
-                        }
-                        if (node.live2dParameters) {
-                            node.live2dParameters.forEach((p) => {
-                                t.updateNodeProperty('live2dParameter', [p.name, p.value])
-                                t.updateNodeProperty('live2dParameterState', [p.name, p.state])
-                            })
-                        }
-                        if (node.live2dParts) {
-                            node.live2dParts.forEach((p) => {
-                                t.updateNodeProperty('live2dPart', [p.name, p.value])
-                                t.updateNodeProperty('live2dPartState', [p.name, p.state])
-                            })
-                        }
-                    }
-                    break
-                }
-                case 'img': {
-                    let imgNodes = await t.addImageNode(['export/' + node.path + '/' + node.name])
-                    let mNode = imgNodes[0]
-                    if (mNode) {
-                        if (node.scaleX !== undefined && node.scaleY !== undefined) {
-                            mNode.scale.set(node.scaleX, node.scaleY)
-                        } else {
-                            mNode.scale.set(node.scale)
-                        }
-                        mNode.x = node.x
-                        mNode.y = node.y
-                        if (node.rotation !== undefined) mNode.rotation = node.rotation
-                        if (node.alpha !== undefined) mNode.alpha = node.alpha
-                    }
-                    break
-                }
-                case 'video': {
-                    let videoNodes = await t.addVideoNode([{
-                        path: ['export/' + node.path + '/' + node.name],
-                        name: node.name,
-                        type: node.name.split('.').pop().toLowerCase()
-                    }])
-                    let mNode = videoNodes[0]
-                    if (mNode) {
-                        if (node.scaleX !== undefined && node.scaleY !== undefined) {
-                            mNode.scale.set(node.scaleX, node.scaleY)
-                        } else {
-                            mNode.scale.set(node.scale)
-                        }
-                        mNode.x = node.x
-                        mNode.y = node.y
-                        if (node.rotation !== undefined) mNode.rotation = node.rotation
-                        if (node.alpha !== undefined) mNode.alpha = node.alpha
-                        
-                        mNode._videoLoop = node.videoLoop !== undefined ? node.videoLoop : true
-                        mNode._videoMuted = node.videoMuted !== undefined ? node.videoMuted : false
-                        mNode._videoVolume = node.videoVolume !== undefined ? node.videoVolume : 1.0
-                        mNode._videoPlaying = node.videoPlaying !== undefined ? node.videoPlaying : true
-                        
-                        const videoEl = mNode.nodeData.getVideoElement()
-                        if (videoEl) {
-                            videoEl.loop = mNode._videoLoop
-                            videoEl.muted = mNode._videoMuted
-                            videoEl.volume = mNode._videoVolume
-                            if (mNode._videoPlaying) {
-                                videoEl.play()
-                            } else {
-                                videoEl.pause()
-                            }
-                        }
-                    }
-                    break
-                }
-                case 'text': {
-                    let textNodes = await t.addTextNode(node.text, {
-                        fontFamily: node.fontFamily,
-                        fontSize: node.fontSize,
-                        fill: node.fill,
-                        align: node.align,
-                        name: node.name
-                    })
-                    let mNode = textNodes[0]
-                    if (mNode) {
-                        if (node.scaleX !== undefined && node.scaleY !== undefined) {
-                            mNode.scale.set(node.scaleX, node.scaleY)
-                        } else {
-                            mNode.scale.set(node.scale)
-                        }
-                        mNode.x = node.x
-                        mNode.y = node.y
-                        if (node.rotation !== undefined) mNode.rotation = node.rotation
-                        if (node.alpha !== undefined) mNode.alpha = node.alpha
-                    }
-                    break
-                }
-                case 'rect': {
-                    let rectNodes = await t.addRectNode({
-                        width: node.width,
-                        height: node.height,
-                        fill: node.fill,
-                        radius: node.radius,
-                        borderWidth: node.borderWidth,
-                        borderColor: node.borderColor,
-                        name: node.name
-                    })
-                    let mNode = rectNodes[0]
-                    if (mNode) {
-                        if (node.scaleX !== undefined && node.scaleY !== undefined) {
-                            mNode.scale.set(node.scaleX, node.scaleY)
-                        } else {
-                            mNode.scale.set(node.scale)
-                        }
-                        mNode.x = node.x
-                        mNode.y = node.y
-                        if (node.rotation !== undefined) mNode.rotation = node.rotation
-                        if (node.alpha !== undefined) mNode.alpha = node.alpha
-                    }
-                    break
-                }
-                case 'animatedSprite': {
-                    let textures = []
-                    let originalJson = node.originalJson
-                    let imageSrc = node.imageSrc
-                    if (node.sourceType === 'spritesheet' || node.sourceType === 'grid') {
-                        imageSrc = 'export/' + node.path + '/' + node.imageName
-                    }
-                    let imagesInfo = []
-                    
-                    if (node.sourceType === 'spritesheet') {
-                        const baseTexture = await loadTexture(imageSrc)
-                        const spritesheet = new PIXI.Spritesheet(baseTexture, originalJson)
-                        await spritesheet.parse()
-                        textures = Object.values(spritesheet.textures)
-                    } else if (node.sourceType === 'grid') {
-                        const baseTexture = await loadTexture(imageSrc)
-                        const rows = node.rows
-                        const cols = node.cols
-                        const frameW = baseTexture.width / cols
-                        const frameH = baseTexture.height / rows
-                        
-                        for (let r = 0; r < rows; r++) {
-                            for (let c = 0; c < cols; c++) {
-                                const rect = new PIXI.Rectangle(c * frameW, r * frameH, frameW, frameH)
-                                const frameTexture = new PIXI.Texture(baseTexture.baseTexture || baseTexture, rect)
-                                textures.push(frameTexture)
-                            }
-                        }
-                    } else {
-                        // images
-                        for (let i = 0; i < node.images.length; i++) {
-                            const imgInfo = node.images[i]
-                            const imgUrl = 'export/' + node.path + '/' + imgInfo.savedName
-                            const texture = await loadTexture(imgUrl)
-                            textures.push(texture)
-                            imagesInfo.push({
-                                name: imgInfo.name,
-                                url: imgUrl
-                            })
-                        }
-                    }
-                    
-                    if (textures.length > 0) {
-                        let animatedSpriteNodes = await t.addAnimatedSpriteNode(textures, node.sourceType, {
-                            name: node.name,
-                            originalJson,
-                            imageSrc,
-                            jsonName: node.jsonName,
-                            imageName: node.imageName,
-                            imagesInfo,
-                            rows: node.rows,
-                            cols: node.cols
-                        })
-                        let mNode = animatedSpriteNodes[0]
-                        if (mNode) {
-                            if (node.scaleX !== undefined && node.scaleY !== undefined) {
-                                mNode.scale.set(node.scaleX, node.scaleY)
-                            } else {
-                                mNode.scale.set(node.scale)
-                            }
-                            mNode.x = node.x
-                            mNode.y = node.y
-                            if (node.rotation !== undefined) mNode.rotation = node.rotation
-                            if (node.alpha !== undefined) mNode.alpha = node.alpha
-                            mNode.nodeData.animationSpeed = node.animationSpeed !== undefined ? node.animationSpeed : 1.0
-                            mNode.nodeData.loop = node.loop !== undefined ? node.loop : true
-                            mNode.nodeData.playing = node.playing !== undefined ? node.playing : true
-                        }
-                    }
-                    break
-                }
+            } else {
+                console.warn(`No preview loader found for node type: ${nodeConfig.type}`);
             }
         }
         setTimeout(() => {
-            for (var j = 0; j < mCacheNode.length; j++) {
+            for (let j = 0; j < mCacheNode.length; j++) {
                 if (mCacheNode[j].state && mCacheNode[j].state.tracks && mCacheNode[j].state.tracks[0]) {
                     mCacheNode[j].state.tracks[0].time = 0
                 }
@@ -398,6 +154,97 @@ export default {
 
             app.canvas.addEventListener('wheel', (e) => this.onMouseWheel(e))
             app.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e))
+
+            // Mobile Touch Gestures (Pinch to Zoom & Two-Finger Pan)
+            let touchState = {
+                lastX: 0,
+                lastY: 0,
+                lastDistance: 0,
+                isTwoFinger: false,
+            }
+
+            app.canvas.addEventListener(
+                'touchstart',
+                (e) => {
+                    if (e.touches.length === 2) {
+                        e.preventDefault()
+                        touchState.isTwoFinger = true
+
+                        const t1 = e.touches[0]
+                        const t2 = e.touches[1]
+                        touchState.lastX = (t1.clientX + t2.clientX) / 2
+                        touchState.lastY = (t1.clientY + t2.clientY) / 2
+
+                        const dx = t1.clientX - t2.clientX
+                        const dy = t1.clientY - t2.clientY
+                        touchState.lastDistance = Math.sqrt(dx * dx + dy * dy)
+                    } else {
+                        touchState.isTwoFinger = false
+                    }
+                },
+                { passive: false },
+            )
+
+            app.canvas.addEventListener(
+                'touchmove',
+                (e) => {
+                    if (e.touches.length === 2 && touchState.isTwoFinger) {
+                        e.preventDefault()
+
+                        const t1 = e.touches[0]
+                        const t2 = e.touches[1]
+
+                        const midX = (t1.clientX + t2.clientX) / 2
+                        const midY = (t1.clientY + t2.clientY) / 2
+                        const deltaX = midX - touchState.lastX
+                        const deltaY = midY - touchState.lastY
+
+                        const dx = t1.clientX - t2.clientX
+                        const dy = t1.clientY - t2.clientY
+                        const distance = Math.sqrt(dx * dx + dy * dy)
+                        let scaleRatio = 1
+                        if (touchState.lastDistance > 0) {
+                            scaleRatio = distance / touchState.lastDistance
+                        }
+
+                        const world = canvas.world
+                        const oldScale = world.scale.x
+                        let newScale = oldScale * scaleRatio
+                        newScale = Math.max(0.1, Math.min(3.0, newScale))
+
+                        const rect = app.canvas.getBoundingClientRect()
+                        const zoomClientX = midX - rect.left
+                        const zoomClientY = midY - rect.top
+
+                        const localPos = world.worldTransform.applyInverse({ x: zoomClientX, y: zoomClientY })
+
+                        world.scale.set(newScale)
+
+                        const scaleStep = newScale - oldScale
+                        world.x += deltaX - localPos.x * scaleStep
+                        world.y += deltaY - localPos.y * scaleStep
+
+                        touchState.lastX = midX
+                        touchState.lastY = midY
+                        touchState.lastDistance = distance
+
+                        this.updateScale()
+                        uiStore.updateScale(newScale)
+                        uiStore.updateWorldPosition(world.x, world.y)
+                    }
+                },
+                { passive: false },
+            )
+
+            app.canvas.addEventListener(
+                'touchend',
+                (e) => {
+                    if (e.touches.length < 2) {
+                        touchState.isTwoFinger = false
+                    }
+                },
+                { passive: false },
+            )
 
             this.debug.examples.spine = new PIXI.spine.SpineDebugRenderer()
             this.debug.examples.spine42 = new PIXI.spine.spine42.SpineDebugRenderer()

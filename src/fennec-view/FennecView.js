@@ -11,7 +11,7 @@ import projectMethods from './project'
 import screenshotMethods from './screenshot'
 import interactionMethods from './interaction'
 import listMethods from './list'
-import helperMethods, { downloadTextAsFile } from './helpers'
+import helperMethods, { downloadTextAsFile } from '@/utils/helpers'
 import * as ffmpegWasmMethods from './ffmpegWasm'
 
 // Core sub-modules
@@ -123,14 +123,6 @@ export const FennecView = {
             for (let key in this.examples) {
                 if (!this.examples[key]) continue
                 for (let key2 in style) {
-                    const el = document.getElementById('leftMenu-view-debug-' + key2)
-                    if (el) {
-                        if (typeof style[key2] == 'boolean') {
-                            el.checked = style[key2]
-                        } else {
-                            el.value = style[key2]
-                        }
-                    }
                     this.examples[key][key2] = style[key2]
                 }
             }

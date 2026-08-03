@@ -1,5 +1,6 @@
-import { sceneResourceManager, textNode, rectNode, animatedSpriteNode } from '../node'
+import { sceneResourceManager } from '../node'
 import { useUIStore } from '@/stores/uiStore'
+import { fileResourceManager } from '@/services/resources/FileResourceManager'
 const PIXI = window.PIXI
 
 export default {
@@ -20,122 +21,6 @@ export default {
         this.refreshBatchSelection()
         this.refreshList()
         this.refreshPropertyPanel()
-    },
-
-    addSpineNode: async function (list, alphaMode = 2) {
-        if (!list || list.length == 0) {
-            return []
-        }
-        let box = this.canvas.box
-        let loadList = []
-        let nodes = []
-        list.forEach((e) => {
-            loadList.push(sceneResourceManager.load(e, { alphaMode }))
-        })
-        let loadedNodes = await Promise.all(loadList)
-        loadedNodes.forEach((node) => {
-            if (!node) return
-            this.click.current = node
-            box.addChild(node)
-            this.refreshPropertyPanel()
-            this.attachNodeEvents(node)
-            nodes.push(node)
-        })
-        this.refreshList()
-        return nodes
-    },
-
-    addImageNode: async function (list) {
-        if (!list || list.length == 0) {
-            return []
-        }
-        let box = this.canvas.box
-        let loadList = []
-        let nodes = []
-        list.forEach((e) => {
-            loadList.push(sceneResourceManager.load(e))
-        })
-        let loadedNodes = await Promise.all(loadList)
-        loadedNodes.forEach((node) => {
-            if (!node) return
-            this.click.current = node
-            box.addChild(node)
-            this.refreshPropertyPanel()
-            this.attachNodeEvents(node)
-            nodes.push(node)
-        })
-        this.refreshList()
-        return nodes
-    },
-
-    addVideoNode: async function (list) {
-        if (!list || list.length == 0) {
-            return []
-        }
-        let box = this.canvas.box
-        let loadList = []
-        let nodes = []
-        list.forEach((e) => {
-            loadList.push(sceneResourceManager.load(e, { type: 'video' }))
-        })
-        let loadedNodes = await Promise.all(loadList)
-        loadedNodes.forEach((node) => {
-            if (!node) return
-            this.click.current = node
-            box.addChild(node)
-            this.refreshPropertyPanel()
-            this.attachNodeEvents(node)
-            nodes.push(node)
-        })
-        this.refreshList()
-        return nodes
-    },
-
-    addTextNode: async function (text, options = {}) {
-        let box = this.canvas.box
-        let nodeInstance = new textNode(text, options)
-        let pixiNode = await nodeInstance
-        if (pixiNode) {
-            this.click.current = pixiNode
-            box.addChild(pixiNode)
-            this.refreshPropertyPanel()
-            this.attachNodeEvents(pixiNode)
-            this.refreshList()
-            return [pixiNode]
-        }
-        return []
-    },
-
-    addRectNode: async function (options = {}) {
-        let box = this.canvas.box
-        let nodeInstance = new rectNode(options)
-        let pixiNode = await nodeInstance
-        if (pixiNode) {
-            this.click.current = pixiNode
-            box.addChild(pixiNode)
-            this.refreshPropertyPanel()
-            this.attachNodeEvents(pixiNode)
-            this.refreshList()
-            return [pixiNode]
-        }
-    },
-
-    addAnimatedSpriteNode: async function (textures, sourceType, extraInfo = {}) {
-        if (!textures || textures.length === 0) {
-            return []
-        }
-        let box = this.canvas.box
-        let nodeInstance = new animatedSpriteNode(textures, sourceType, extraInfo)
-        let pixiNode = await nodeInstance
-        if (pixiNode) {
-            this.click.current = pixiNode
-            box.addChild(pixiNode)
-            this.refreshPropertyPanel()
-            this.attachNodeEvents(pixiNode)
-            this.refreshList()
-            return [pixiNode]
-        }
-        return []
     },
 
 
@@ -230,7 +115,7 @@ export default {
         if (this.preview.state) {
             return
         }
-        var node = this.click.current
+        const node = this.click.current
         if (!node) {
             return
         }

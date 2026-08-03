@@ -29,12 +29,12 @@ export const BatchRenameManager = {
             console.warn("File system operations are only supported in Electron/Cordova environments.");
             return;
         }
-        console.time(5);
+        console.time('batchRenameLoadFiles');
         event.preventDefault();
         event.stopPropagation();
         let fileList = [];
         let files = event.dataTransfer.files;
-        for (var i = 0; i < files.length; i++) {
+        for (let i = 0; i < files.length; i++) {
             let stats = await nodeFs.stat(files[i].path);
             if (stats.isDirectory()) {
                 let list = await getAllFiles(files[i].path, function (state) {
@@ -47,7 +47,7 @@ export const BatchRenameManager = {
             }
         }
         let skelFile = [];
-        for (var i = 0; i < fileList.length; i++) {
+        for (let i = 0; i < fileList.length; i++) {
             let data = await readFileData(fileList[i], 70);
             let text = data.toString('ascii');
             let vs = null;
@@ -80,8 +80,7 @@ export const BatchRenameManager = {
                 });
             }
         }
-        let txt = "";
-        for (var i = 0; i < skelFile.length; i++) {
+        for (let i = 0; i < skelFile.length; i++) {
             let file = skelFile[i];
             file.path = file.path.replace(/\\/g, "/");
             let filePathData = file.path.match(/(.*\/)(.*)/);
@@ -127,35 +126,17 @@ export const BatchRenameManager = {
                     }
                     break;
             }
-            if (file.endName) {
-                txt +=
-                    `<div class="menuButton" style="text-align: left;">
-                        <div style="font-size: 14px">` +
-                            file.place +
-                            `</div>
-                        <span style="color: rgb(255, 4, 0);;">` +
-                            file.name +
-                            `</span> =>
-                        <span style="color: rgb(21, 255, 0)">` +
-                            file.endName +
-                            `</span>
-                    </div>`;
-            }
         }
         this.files = skelFile;
-        const listContainer = document.getElementById("toolView-batchRename-list");
-        if (listContainer) {
-            listContainer.innerHTML = txt;
-        }
-        console.timeEnd(5);
+        console.timeEnd('batchRenameLoadFiles');
+        return skelFile;
     },
     runBatchRename: async function () {
-        if (!nodeFs) return;
+        if (!nodeFs) return [];
         let files = this.files;
         this.files = [];
-        let txt = "";
-        if (files.length <= 0) { return; }
-        for (var i = 0; i < files.length; i++) {
+        if (files.length <= 0) { return []; }
+        for (let i = 0; i < files.length; i++) {
             let file = files[i];
             if (!file.endName) { continue; }
             let state = true;
@@ -164,18 +145,9 @@ export const BatchRenameManager = {
             } catch {
                 state = false;
             }
-            txt +=
-                `<div class="menuButton" style="text-align: left;">
-                    <div style="font-size: 14px">` + file.place + `</div>
-                    <span style="color: rgb(255, 4, 0);;">` + file.name + `</span> =>
-                    <span style="color: rgb(21, 255, 0)">` + file.endName + `</span> => 
-                    <span style="color: rgb(255, 0, 204)">` + (state ? 'ok' : 'error') + `</span>
-                </div>`;
+            file.status = state ? 'ok' : 'error';
         }
-        const listContainer = document.getElementById("toolView-batchRename-list");
-        if (listContainer) {
-            listContainer.innerHTML = txt;
-        }
+        return files;
     }
 };
 

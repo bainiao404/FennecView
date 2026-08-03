@@ -41,6 +41,28 @@ async function handleAddVideo() {
     }
     input.click()
 }
+
+async function handleAddSvg() {
+    if (FennecView?.addSvgNode) {
+        await FennecView.addSvgNode({
+            name: i18n.locale === 'zh' ? 'SVG 几何节点' : 'SVG Vector Node'
+        })
+    }
+}
+
+async function handleImportSvgFile() {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/svg+xml'
+    input.onchange = async (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+        if (FennecView?.fileHandleDropWeb) {
+            await FennecView.fileHandleDropWeb([file])
+        }
+    }
+    input.click()
+}
 </script>
 
 <template>
@@ -50,16 +72,24 @@ async function handleAddVideo() {
                 {{ i18n.locale === 'zh' ? '添加元素' : 'Add Elements' }}
             </div>
             
-            <div class="action-row" style="display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; gap: 8px;">
-                    <button class="ind-btn primary-btn" @click="handleAddText" style="flex: 1; font-weight: bold; padding: 10px;">
+            <div class="action-row">
+                <div class="button-row">
+                    <button class="ind-btn primary-btn action-btn" @click="handleAddText">
                         {{ i18n.locale === 'zh' ? '添加文本' : 'Add Text' }}
                     </button>
-                    <button class="ind-btn primary-btn" @click="handleAddRect" style="flex: 1; font-weight: bold; padding: 10px;">
+                    <button class="ind-btn primary-btn action-btn" @click="handleAddRect">
                         {{ i18n.locale === 'zh' ? '添加矩形' : 'Add Rect' }}
                     </button>
                 </div>
-                <button class="ind-btn primary-btn" @click="handleAddVideo" style="width: 100%; font-weight: bold; padding: 10px;">
+                <div class="button-row">
+                    <button class="ind-btn primary-btn action-btn" @click="handleAddSvg">
+                        {{ i18n.locale === 'zh' ? '添加 SVG' : 'Add SVG' }}
+                    </button>
+                    <button class="ind-btn primary-btn action-btn" @click="handleImportSvgFile">
+                        {{ i18n.locale === 'zh' ? '导入 SVG' : 'Import SVG' }}
+                    </button>
+                </div>
+                <button class="ind-btn primary-btn action-btn full-width" @click="handleAddVideo">
                     {{ i18n.locale === 'zh' ? '添加视频' : 'Add Video' }}
                 </button>
             </div>
@@ -86,6 +116,27 @@ async function handleAddVideo() {
     margin-bottom: 12px;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 6px;
+}
+
+.action-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.button-row {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    flex: 1;
+    font-weight: bold;
+    padding: 10px;
+}
+
+.full-width {
+    width: 100%;
 }
 
 .primary-btn {

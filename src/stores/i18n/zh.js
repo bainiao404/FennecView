@@ -70,7 +70,6 @@ export default {
   renderResolution: '渲染倍率',
   backgroundColor: '背景颜色',
   languageSelect: '语言选择',
-  glassmorphismEffect: '毛玻璃效果',
   pixiAntialias: 'PIXI 抗锯齿',
   reloadRequired: '刷新/重启生效',
   optionEnabled: '开启',

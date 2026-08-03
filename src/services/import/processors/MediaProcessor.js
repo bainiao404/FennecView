@@ -1,6 +1,6 @@
 import { BaseProcessor } from './BaseProcessor'
 import FennecView from '@/fennec-view/FennecView'
-import { isElectron } from '@/assets/gkd-js-0.2/env.js'
+import { fileResourceManager } from '@/services/resources/FileResourceManager'
 
 export class MediaProcessor extends BaseProcessor {
     /**
@@ -8,7 +8,7 @@ export class MediaProcessor extends BaseProcessor {
      */
     async detect(fileItem) {
         const name = fileItem.name.toLowerCase();
-        return /\.(png|jpg|jpeg|webp|gif|mp4|webm|ogg)$/i.test(name);
+        return /\.(png|jpg|jpeg|webp|gif|mp4|webm|ogg|svg)$/i.test(name);
     }
 
     /**
@@ -18,10 +18,11 @@ export class MediaProcessor extends BaseProcessor {
         const name = entryFile.name;
         const ext = name.split('.').pop().toLowerCase();
         const isVideo = ['mp4', 'webm', 'ogg'].includes(ext);
+        const isSvg = ext === 'svg';
 
         return {
             id: 'media_' + entryFile.relativePath,
-            type: isVideo ? 'video' : 'image',
+            type: isVideo ? 'video' : (isSvg ? 'svg' : 'image'),
             name: name,
             status: 'complete',
             entryFile,
@@ -42,43 +43,45 @@ export class MediaProcessor extends BaseProcessor {
         const fileItem = importItem.associatedFiles.media;
         const ext = fileItem.name.split('.').pop().toLowerCase();
 
-        // If we are in Electron and using native paths, load from disk directly
-        if (isElectron() && fileItem.isNative) {
-            const localPath = fileItem.path;
-            if (importItem.type === 'video') {
-                const videoSrcs = [{
-                    path: [localPath],
-                    name: importItem.config.name,
-                    type: ext
-                }];
-                await FennecView.addVideoNode(videoSrcs);
-            } else {
-                const imgSrcs = [{
-                    path: [localPath],
-                    name: importItem.config.name,
-                    type: ext
-                }];
-                await FennecView.addImageNode(imgSrcs);
-            }
-            return;
-        }
+        const loadPath = await fileItem.getLoadUrl();
+        fileResourceManager.addFileToGroup(importItem.id, loadPath);
 
-        // Web mode: use Blob URLs
-        const blobUrl = await this.getFileBlobUrl(fileItem);
         if (importItem.type === 'video') {
             const videoSrcs = [{
-                path: [blobUrl],
+                path: [loadPath],
                 name: importItem.config.name,
-                type: ext
+                type: ext,
+                resourceId: importItem.id
             }];
-            await FennecView.addVideoNode(videoSrcs);
+            const nodes = await FennecView.addVideoNode(videoSrcs);
+            if (nodes && nodes[0]) {
+                nodes[0].name = importItem.config.name;
+                nodes[0].originalFileName = fileItem.name;
+            }
+        } else if (importItem.type === 'svg') {
+            const svgSrcs = [{
+                path: [loadPath],
+                name: importItem.config.name,
+                type: 'svg',
+                resourceId: importItem.id
+            }];
+            const nodes = await FennecView.addSvgNode(svgSrcs);
+            if (nodes && nodes[0]) {
+                nodes[0].name = importItem.config.name;
+                nodes[0].originalFileName = fileItem.name;
+            }
         } else {
             const imgSrcs = [{
-                path: [blobUrl],
+                path: [loadPath],
                 name: importItem.config.name,
-                type: ext
+                type: ext,
+                resourceId: importItem.id
             }];
-            await FennecView.addImageNode(imgSrcs);
+            const nodes = await FennecView.addImageNode(imgSrcs);
+            if (nodes && nodes[0]) {
+                nodes[0].name = importItem.config.name;
+                nodes[0].originalFileName = fileItem.name;
+            }
         }
     }
 }

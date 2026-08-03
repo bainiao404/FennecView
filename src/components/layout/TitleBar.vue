@@ -21,7 +21,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { RemoveIcon, CloseIcon, FullscreenIcon, FullscreenExitIcon, MinusRectangleIcon } from 'tdesign-icons-vue-next'
+import { RemoveIcon, CloseIcon, FullscreenIcon, FullscreenExitIcon } from 'tdesign-icons-vue-next'
 
 defineEmits(['enter-mini'])
 

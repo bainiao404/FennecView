@@ -1,16 +1,11 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { SpineProcessor } from '@/services/import/processors/SpineProcessor'
-import { Live2dProcessor } from '@/services/import/processors/Live2dProcessor'
-import { SpritesheetProcessor } from '@/services/import/processors/SpritesheetProcessor'
-import { MediaProcessor } from '@/services/import/processors/MediaProcessor'
 import { useLayerStore } from './layerStore'
 import { MessagePlugin } from 'tdesign-vue-next'
-
-const spineProcessor = new SpineProcessor()
-const live2dProcessor = new Live2dProcessor()
-const spritesheetProcessor = new SpritesheetProcessor()
-const mediaProcessor = new MediaProcessor()
+import { createFileItem } from '@/services/import/models/FileItem.js'
+import { platformService } from '@/services/platform/PlatformService'
+import { processorRegistry } from '@/services/import/processors/ProcessorRegistry'
+import { MimeUtil } from '@/utils/MimeUtil'
 
 export const useImportStore = defineStore('import', () => {
     const filesPool = ref([])
@@ -75,7 +70,10 @@ export const useImportStore = defineStore('import', () => {
 
         isProcessing.value = true
         try {
-            const poolMap = new Map(filesPool.value.map(f => [f.relativePath, f]))
+            const expandedFiles = []
+            const scannedDirs = new Set()
+            const isNativePlatform = platformService.isNative()
+
             for (const file of newFiles) {
                 // If it is a project file (.fv), load it directly and bypass import preprocess
                 if (file.name.toLowerCase().endsWith('.fv')) {
@@ -83,7 +81,39 @@ export const useImportStore = defineStore('import', () => {
                     isProcessing.value = false
                     return
                 }
-                poolMap.set(file.relativePath, file)
+
+                const name = file.name.toLowerCase()
+                const isSpineOrLive2D = MimeUtil.isSpineOrLive2dCore(name)
+                const fileItemPath = file.path
+
+                if (isNativePlatform && isSpineOrLive2D && fileItemPath) {
+                    const normPath = fileItemPath.replace(/\\/g, '/')
+                    const lastSlash = normPath.lastIndexOf('/')
+                    if (lastSlash !== -1) {
+                        const parentDir = normPath.substring(0, lastSlash)
+                        if (!scannedDirs.has(parentDir)) {
+                            scannedDirs.add(parentDir)
+                            try {
+                                const { FileScanner } = await import('@/services/import/utils/fileScanner.js')
+                                const localFiles = await FileScanner.scanLocalDirectory(parentDir)
+                                if (localFiles && localFiles.length > 0) {
+                                    expandedFiles.push(...localFiles)
+                                    continue
+                                }
+                            } catch (e) {
+                                console.error('Failed to auto-scan associated files from directory:', parentDir, e)
+                            }
+                        } else {
+                            continue
+                        }
+                    }
+                }
+                expandedFiles.push(file)
+            }
+
+            const poolMap = new Map(filesPool.value.map(f => [f.relativePath, createFileItem(f)]))
+            for (const file of expandedFiles) {
+                poolMap.set(file.relativePath, createFileItem(file))
             }
             filesPool.value = Array.from(poolMap.values())
             
@@ -120,7 +150,7 @@ export const useImportStore = defineStore('import', () => {
                 const { ioManager } = await import('@/services/io/IOManager')
                 buffer = await ioManager.getDriver().read(fileItem.path)
             } else {
-                const { readBlobAsArrayBuffer } = await import('@/fennec-view/helpers')
+                const { readBlobAsArrayBuffer } = await import('@/utils/helpers')
                 buffer = await readBlobAsArrayBuffer(fileItem.file)
             }
             await FennecView.loadProjectFromBuffer(buffer)
@@ -133,112 +163,410 @@ export const useImportStore = defineStore('import', () => {
         }
     }
 
-    /**
-     * Core grouping algorithm. Analyzes filesPool and rebuilds importItems.
-     */
     async function evaluate() {
+        const manualItems = importItems.value.filter(item => ['animated_sprite', 'spritesheet_grid', 'stand_diff'].includes(item.type))
+
         const pool = [...filesPool.value]
-        const items = []
+        const items = [...manualItems]
         const associatedPaths = new Set()
 
-        // 1. Detect complex structures (Live2D -> Spine -> Spritesheet)
-        // We look for entry files first.
-        const entryCandidates = pool.filter(f => {
-            const name = f.name.toLowerCase()
-            return name.endsWith('.json') || name.endsWith('.skel') || name.endsWith('.spine-json')
-        })
-
-        // Check Live2D entries
-        const live2dEntries = []
-        for (const f of entryCandidates) {
-            if (await live2dProcessor.detect(f)) {
-                live2dEntries.push(f)
+        // Mark files from manual items as associated
+        for (const item of manualItems) {
+            if (item.associatedFiles) {
+                Object.values(item.associatedFiles).forEach(val => {
+                    if (!val) return
+                    if (Array.isArray(val)) {
+                        val.forEach(f => {
+                            if (f && f.relativePath) associatedPaths.add(f.relativePath)
+                        })
+                    } else if (val.relativePath) {
+                        associatedPaths.add(val.relativePath)
+                    }
+                })
             }
         }
 
-        // Group Live2D
-        for (const entry of live2dEntries) {
-            const groupItem = await live2dProcessor.group(entry, pool)
-            groupItem.processor = live2dProcessor
-            // Cache reference
-            entry.importItemId = groupItem.id
-            items.push(groupItem)
+        // 1. Detect complex structures (Live2D, Spine, Spritesheets) using entry candidates
+        const entryCandidates = pool.filter(f => MimeUtil.isEntryCandidate(f.name))
 
-            // Mark associated
-            associatedPaths.add(entry.relativePath)
-            if (groupItem.associatedFiles.crucial) {
-                groupItem.associatedFiles.crucial.forEach(f => associatedPaths.add(f.relativePath))
-            }
-            if (groupItem.associatedFiles.optional) {
-                groupItem.associatedFiles.optional.forEach(f => associatedPaths.add(f.relativePath))
-            }
-        }
+        const processors = processorRegistry.getProcessors()
 
-        // Check Spine entries (exclude files already associated)
-        const spineEntries = []
-        for (const f of entryCandidates) {
-            if (associatedPaths.has(f.relativePath)) continue
-            if (await spineProcessor.detect(f)) {
-                spineEntries.push(f)
-            }
-        }
+        for (const processor of processors) {
+            if (!processor.isEntryBased) continue
 
-        // Group Spine
-        for (const entry of spineEntries) {
-            const groupItem = await spineProcessor.group(entry, pool)
-            groupItem.processor = spineProcessor
-            entry.importItemId = groupItem.id
-            items.push(groupItem)
-
-            // Mark associated
-            associatedPaths.add(entry.relativePath)
-            if (groupItem.associatedFiles.atlas) {
-                associatedPaths.add(groupItem.associatedFiles.atlas.relativePath)
+            // Find entries that are not yet associated
+            const entries = []
+            for (const f of entryCandidates) {
+                if (associatedPaths.has(f.relativePath)) continue
+                if (await processor.detect(f)) {
+                    entries.push(f)
+                }
             }
-            if (groupItem.associatedFiles.textures) {
-                groupItem.associatedFiles.textures.forEach(f => associatedPaths.add(f.relativePath))
+
+            // Group and map them
+            for (const entry of entries) {
+                const groupItem = await processor.group(entry, pool)
+                groupItem.processor = processor
+                entry.importItemId = groupItem.id
+                items.push(groupItem)
+
+                // Mark all associated files
+                associatedPaths.add(entry.relativePath)
+                if (groupItem.associatedFiles) {
+                    Object.values(groupItem.associatedFiles).forEach(val => {
+                        if (!val) return
+                        if (Array.isArray(val)) {
+                            val.forEach(f => {
+                                if (f && f.relativePath) associatedPaths.add(f.relativePath)
+                            })
+                        } else if (val.relativePath) {
+                            associatedPaths.add(val.relativePath)
+                        }
+                    })
+                }
             }
         }
 
-        // Check Spritesheet entries (exclude files already associated)
-        const spritesheetEntries = []
-        for (const f of entryCandidates) {
-            if (associatedPaths.has(f.relativePath)) continue
-            if (await spritesheetProcessor.detect(f)) {
-                spritesheetEntries.push(f)
-            }
-        }
-
-        // Group Spritesheets
-        for (const entry of spritesheetEntries) {
-            const groupItem = await spritesheetProcessor.group(entry, pool)
-            groupItem.processor = spritesheetProcessor
-            entry.importItemId = groupItem.id
-            items.push(groupItem)
-
-            // Mark associated
-            associatedPaths.add(entry.relativePath)
-            if (groupItem.associatedFiles.image) {
-                associatedPaths.add(groupItem.associatedFiles.image.relativePath)
-            }
-        }
-
-        // 2. Process remaining unassociated files as Media or Orphans
+        // 2. Process remaining unassociated files (Media, etc.) or treat as Orphans
         const unassociated = pool.filter(f => !associatedPaths.has(f.relativePath))
         const orphans = []
 
         for (const f of unassociated) {
-            if (await mediaProcessor.detect(f)) {
-                const groupItem = await mediaProcessor.group(f, pool)
-                groupItem.processor = mediaProcessor
-                items.push(groupItem)
-            } else {
+            let matched = false
+            for (const processor of processors) {
+                if (processor.isEntryBased) continue
+
+                if (await processor.detect(f)) {
+                    const groupItem = await processor.group(f, pool)
+                    groupItem.processor = processor
+                    items.push(groupItem)
+                    matched = true
+                    break
+                }
+            }
+            if (!matched) {
                 orphans.push(f)
             }
         }
 
         importItems.value = items
         orphanedFiles.value = orphans
+    }
+
+    /**
+     * Change the type of an import item dynamically.
+     */
+    function changeItemType(itemId, newType) {
+        const item = importItems.value.find(i => i.id === itemId)
+        if (!item) return
+
+        if (newType === 'spritesheet_grid' && item.type === 'image') {
+            item.type = 'spritesheet_grid'
+            item.associatedFiles = {
+                image: item.associatedFiles.media
+            }
+            item.config = {
+                name: item.name.replace(/\.[^/.]+$/, "") + '_grid',
+                rows: 1,
+                cols: 1,
+                animationSpeed: 100,
+                loop: true,
+                autoPlay: true
+            }
+        } else if (newType === 'image' && item.type === 'spritesheet_grid') {
+            item.type = 'image'
+            item.associatedFiles = {
+                media: item.associatedFiles.image
+            }
+            item.config = {
+                name: item.name
+            }
+        }
+        evaluate()
+    }
+
+    /**
+     * Combine all images in the import list into a single animated_sprite item.
+     */
+    function combineImagesToAnimatedSprite() {
+        const imageItems = importItems.value.filter(item => item.type === 'image')
+        if (imageItems.length === 0) return
+
+        const files = imageItems.map(item => item.associatedFiles.media)
+        // Natural alphanumeric sort
+        files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+        
+        const resourceId = `animatedSprite_${Math.random().toString(36).substring(2, 9)}`
+        const baseName = files[0].name.replace(/\.[^/.]+$/, "")
+
+        const animatedSpriteItem = {
+            id: resourceId,
+            type: 'animated_sprite',
+            name: baseName + '_anim',
+            status: 'complete',
+            associatedFiles: {
+                frames: files
+            },
+            missingFiles: [],
+            config: {
+                name: baseName + '_anim',
+                animationSpeed: 100,
+                loop: true,
+                autoPlay: true
+            }
+        }
+
+        // Remove the individual image items from our active collection
+        const imageIds = new Set(imageItems.map(i => i.id))
+        importItems.value = importItems.value.filter(i => !imageIds.has(i.id))
+        importItems.value.push(animatedSpriteItem)
+
+        evaluate()
+    }
+
+    /**
+     * Combine all images in the import list into a single stand_diff item.
+     */
+    function combineImagesToStandDiff() {
+        const imageItems = importItems.value.filter(item => item.type === 'image')
+        if (imageItems.length < 2) return
+
+        const files = imageItems.map(item => item.associatedFiles.media)
+        // Natural alphanumeric sort
+        files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+        
+        const resourceId = `standDiff_${Math.random().toString(36).substring(2, 9)}`
+        const baseName = files[0].name.replace(/\.[^/.]+$/, "")
+
+        const standDiffItem = {
+            id: resourceId,
+            type: 'stand_diff',
+            name: baseName + '_stand',
+            status: 'complete',
+            associatedFiles: {
+                files: files
+            },
+            missingFiles: [],
+            config: {
+                name: baseName + '_stand',
+                backgroundName: files[0].name,
+                bgAnchorPreset: 'both',
+                bgAnchorX: 0.5,
+                bgAnchorY: 0.5,
+                fgAnchorPreset: 'both',
+                fgAnchorX: 0.5,
+                fgAnchorY: 0.5,
+                defaultFgX: 0,
+                defaultFgY: 0,
+                foregroundConfigs: files.map(f => ({
+                    name: f.name,
+                    x: '',
+                    y: ''
+                }))
+            }
+        }
+
+        const imageIds = new Set(imageItems.map(i => i.id))
+        importItems.value = importItems.value.filter(i => !imageIds.has(i.id))
+        importItems.value.push(standDiffItem)
+
+        evaluate()
+    }
+
+    /**
+     * Add a manually created import item.
+     */
+    function addManualItem(item) {
+        if (item.associatedFiles) {
+            Object.values(item.associatedFiles).forEach(val => {
+                if (!val) return
+                if (Array.isArray(val)) {
+                    val.forEach(f => {
+                        if (!filesPool.value.some(existing => existing.relativePath === f.relativePath)) {
+                            filesPool.value.push(f)
+                        }
+                    })
+                } else {
+                    if (!filesPool.value.some(existing => existing.relativePath === val.relativePath)) {
+                        filesPool.value.push(val)
+                    }
+                }
+            })
+        }
+        importItems.value.push(item)
+        evaluate()
+    }
+
+    async function importAnimatedSprite(item) {
+        const PIXI = window.PIXI
+        const FennecView = (await import('@/fennec-view/FennecView')).default
+        const { fileResourceManager } = await import('@/services/resources/FileResourceManager')
+
+        const textures = []
+        const imagesInfo = []
+        
+        async function loadTexture(url) {
+            let loadOptions = url
+            if (url && typeof url === 'string' && url.startsWith('blob:')) {
+                loadOptions = {
+                    src: url,
+                    loadParser: 'loadTextures'
+                }
+            }
+            return await PIXI.Assets.load(loadOptions)
+        }
+
+        const frames = item.associatedFiles?.frames || []
+        for (const fileItem of frames) {
+            const url = await fileItem.getLoadUrl()
+            if (fileItem.isNative) {
+                fileResourceManager.registerFile(fileItem.name, null, { path: url })
+            }
+            fileResourceManager.addFileToGroup(item.id, url)
+            
+            const texture = await loadTexture(url)
+            textures.push(texture)
+            imagesInfo.push({
+                name: fileItem.name,
+                url: url
+            })
+        }
+
+        if (textures.length > 0 && typeof FennecView.addAnimatedSpriteNode === 'function') {
+            const node = await FennecView.addAnimatedSpriteNode(textures, 'images', {
+                name: item.config.name,
+                imagesInfo,
+                resourceId: item.id
+            })
+            if (node && node[0]) {
+                const pixiNode = node[0]
+                const frameDuration = item.config.animationSpeed || 100
+                if (pixiNode.nodeData) {
+                    pixiNode.nodeData.animationSpeed = frameDuration
+                }
+                if (pixiNode.loop !== undefined) {
+                    pixiNode.loop = item.config.loop ?? true
+                }
+            }
+        }
+    }
+
+    async function importSpritesheetGrid(item) {
+        const PIXI = window.PIXI
+        const FennecView = (await import('@/fennec-view/FennecView')).default
+        const { fileResourceManager } = await import('@/services/resources/FileResourceManager')
+
+        const imageFile = item.associatedFiles.image
+        const imageSrc = await imageFile.getLoadUrl()
+        
+        if (imageFile.isNative) {
+            fileResourceManager.registerFile(imageFile.name, null, { path: imageSrc })
+        }
+        fileResourceManager.addFileToGroup(item.id, imageSrc)
+
+        async function loadTexture(url) {
+            let loadOptions = url
+            if (url && typeof url === 'string' && url.startsWith('blob:')) {
+                loadOptions = {
+                    src: url,
+                    loadParser: 'loadTextures'
+                }
+            }
+            return await PIXI.Assets.load(loadOptions)
+        }
+
+        const baseTexture = await loadTexture(imageSrc)
+        const rows = item.config.rows || 1
+        const cols = item.config.cols || 1
+        const frameW = baseTexture.width / cols
+        const frameH = baseTexture.height / rows
+
+        const textures = []
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const rect = new PIXI.Rectangle(c * frameW, r * frameH, frameW, frameH)
+                const frameTexture = new PIXI.Texture({
+                    source: baseTexture.source || baseTexture,
+                    frame: rect
+                })
+                textures.push(frameTexture)
+            }
+        }
+
+        if (textures.length > 0 && typeof FennecView.addAnimatedSpriteNode === 'function') {
+            const node = await FennecView.addAnimatedSpriteNode(textures, 'grid', {
+                name: item.config.name,
+                imageSrc,
+                imageName: imageFile.name,
+                rows,
+                cols,
+                resourceId: item.id
+            })
+            if (node && node[0]) {
+                const pixiNode = node[0]
+                const frameDuration = item.config.animationSpeed || 100
+                if (pixiNode.nodeData) {
+                    pixiNode.nodeData.animationSpeed = frameDuration
+                }
+                if (pixiNode.loop !== undefined) {
+                    pixiNode.loop = item.config.loop ?? true
+                }
+            }
+        }
+    }
+
+    async function importStandDiff(item) {
+        const PIXI = window.PIXI
+        const FennecView = (await import('@/fennec-view/FennecView')).default
+        const { fileResourceManager } = await import('@/services/resources/FileResourceManager')
+
+        const files = item.associatedFiles?.files || []
+        const bgFile = files.find(f => f.name === item.config.backgroundName) || files[0]
+        const fgFiles = files.filter(f => f.name !== bgFile.name)
+
+        const bgUrl = await bgFile.getLoadUrl()
+        if (bgFile.isNative) {
+            fileResourceManager.registerFile(bgFile.name, null, { path: bgUrl })
+        }
+        fileResourceManager.addFileToGroup(item.id, bgUrl)
+
+        const bgInfo = {
+            name: bgFile.name,
+            url: bgUrl
+        }
+
+        const fgList = []
+        for (const fileItem of fgFiles) {
+            const url = await fileItem.getLoadUrl()
+            if (fileItem.isNative) {
+                fileResourceManager.registerFile(fileItem.name, null, { path: url })
+            }
+            fileResourceManager.addFileToGroup(item.id, url)
+
+            const fgConfig = item.config.foregroundConfigs?.find(c => c.name === fileItem.name)
+            fgList.push({
+                name: fileItem.name,
+                url: url,
+                x: (fgConfig?.x !== undefined && fgConfig?.x !== null && fgConfig?.x !== '') ? Number(fgConfig.x) : null,
+                y: (fgConfig?.y !== undefined && fgConfig?.y !== null && fgConfig?.y !== '') ? Number(fgConfig.y) : null
+            })
+        }
+
+        if (typeof FennecView.addStandDiffNode === 'function') {
+            await FennecView.addStandDiffNode(bgInfo, fgList, {
+                name: item.config.name,
+                bgAnchorPreset: item.config.bgAnchorPreset || 'both',
+                bgAnchorX: item.config.bgAnchorX !== undefined ? item.config.bgAnchorX : 0.5,
+                bgAnchorY: item.config.bgAnchorY !== undefined ? item.config.bgAnchorY : 0.5,
+                fgAnchorPreset: item.config.fgAnchorPreset || 'both',
+                fgAnchorX: item.config.fgAnchorX !== undefined ? item.config.fgAnchorX : 0.5,
+                fgAnchorY: item.config.fgAnchorY !== undefined ? item.config.fgAnchorY : 0.5,
+                activeFgKey: fgList[0]?.name || '',
+                defaultFgX: item.config.defaultFgX !== undefined ? item.config.defaultFgX : 0,
+                defaultFgY: item.config.defaultFgY !== undefined ? item.config.defaultFgY : 0,
+                resourceId: item.id
+            })
+        }
     }
 
     /**
@@ -258,7 +586,15 @@ export const useImportStore = defineStore('import', () => {
 
         for (const item of completeItems) {
             try {
-                await item.processor.import(item)
+                if (item.type === 'animated_sprite') {
+                    await importAnimatedSprite(item)
+                } else if (item.type === 'spritesheet_grid') {
+                    await importSpritesheetGrid(item)
+                } else if (item.type === 'stand_diff') {
+                    await importStandDiff(item)
+                } else {
+                    await item.processor.import(item)
+                }
                 successCount++
             } catch (e) {
                 console.error(`Failed to import item ${item.name}:`, e)
@@ -288,6 +624,10 @@ export const useImportStore = defineStore('import', () => {
         removeFile,
         removeItem,
         addFiles,
+        addManualItem,
+        changeItemType,
+        combineImagesToAnimatedSprite,
+        combineImagesToStandDiff,
         importAllComplete,
         evaluate
     }

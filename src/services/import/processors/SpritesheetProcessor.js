@@ -1,7 +1,7 @@
 import { BaseProcessor } from './BaseProcessor'
 import FennecView from '@/fennec-view/FennecView'
 import { blobRegistry } from '@/services/resources/BlobRegistry'
-import { isElectron } from '@/assets/gkd-js-0.2/env.js'
+import { fileResourceManager } from '@/services/resources/FileResourceManager'
 
 export class SpritesheetProcessor extends BaseProcessor {
     /**
@@ -110,33 +110,18 @@ export class SpritesheetProcessor extends BaseProcessor {
         const imageFile = importItem.associatedFiles.image;
         const PIXI = window.PIXI;
 
-        // If we are in Electron and using native paths, load from disk directly
-        if (isElectron() && jsonFile.isNative && imageFile.isNative) {
-            const jsonText = await this.readFileAsText(jsonFile);
-            const json = JSON.parse(jsonText);
-            
-            const imagePath = imageFile.path;
-            const baseTexture = await PIXI.Assets.load(imagePath);
-            
-            const spritesheet = new PIXI.Spritesheet(baseTexture, json);
-            await spritesheet.parse();
-            
-            const textures = Object.values(spritesheet.textures);
-            if (textures.length > 0) {
-                const name = importItem.config.name;
-                await FennecView.addAnimatedSpriteNode(textures, 'spritesheet', {
-                    name,
-                    originalJson: json,
-                    imageSrc: imagePath,
-                    jsonName: jsonFile.name,
-                    imageName: imageFile.name
-                });
-            }
-            return;
+        const imageSrc = await imageFile.getLoadUrl();
+        const jsonSrc = await jsonFile.getLoadUrl();
+
+        if (jsonFile.isNative) {
+            fileResourceManager.registerFile(jsonFile.name, null, { path: jsonSrc });
+        }
+        if (imageFile.isNative) {
+            fileResourceManager.registerFile(imageFile.name, null, { path: imageSrc });
         }
 
-        // Web mode: use Blob URLs
-        const imageSrc = await this.getFileBlobUrl(imageFile);
+        fileResourceManager.addFileToGroup(importItem.id, jsonSrc);
+        fileResourceManager.addFileToGroup(importItem.id, imageSrc);
         
         // Helper to load texture
         let loadOptions = imageSrc;
@@ -162,7 +147,8 @@ export class SpritesheetProcessor extends BaseProcessor {
                 originalJson: json,
                 imageSrc,
                 jsonName: jsonFile.name,
-                imageName: imageFile.name
+                imageName: imageFile.name,
+                resourceId: importItem.id
             });
         }
     }

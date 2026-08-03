@@ -19,15 +19,10 @@ const spineFiles = ref([])
 const otherFiles = ref([])
 const fileStatuses = ref({}) // Map of file.relPath -> { status: 'pending'|'success'|'copied'|'error', details: '' }
 
-import { isCordova } from '@/assets/gkd-js-0.2/env.js'
-
-const isElectron = computed(() => {
-    return typeof window !== 'undefined' &&
-        (!!window.process || (window.navigator && window.navigator.userAgent.indexOf('Electron') !== -1))
-})
+import { isCordova, isElectron } from '@/assets/gkd-js-0.2/env.js'
 
 const isSupported = computed(() => {
-    return isElectron.value || isCordova() || (typeof window !== 'undefined' && !!window.cordova)
+    return isElectron() || isCordova()
 })
 
 async function selectSourceDir() {

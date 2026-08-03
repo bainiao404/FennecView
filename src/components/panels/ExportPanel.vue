@@ -52,7 +52,7 @@ function saveProject() {
         <div 
             id="leftMenu-view-export-to38" 
             class="export-section-38"
-            :style="{ display: hasOriginalSpine ? 'block' : 'none' }"
+            v-show="hasOriginalSpine"
         >
             <div class="ind-btn export-btn" @click="exportTo38">
                 {{ i18n.t('btnExport38') }}

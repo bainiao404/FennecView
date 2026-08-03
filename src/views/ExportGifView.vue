@@ -137,8 +137,8 @@ function startExport() {
                         <span v-if="!gifConfig.autoDuration" class="value-badge">{{ gifConfig.duration }}s</span>
                         <span v-else class="value-badge">{{ i18n.t('autoDurationLabel') }}</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
-                        <label class="ind-checkbox-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-size: 13px; color: var(--text-primary);">
+                    <div class="duration-controls-row">
+                        <label class="ind-checkbox-label duration-checkbox-label">
                             <input 
                                 type="checkbox" 
                                 :checked="gifConfig.autoDuration"
@@ -148,21 +148,20 @@ function startExport() {
                         </label>
                         <input 
                             v-if="!gifConfig.autoDuration"
-                            class="ind-range"
+                            class="ind-range duration-slider"
                             type="range"
                             min="1"
                             max="60"
                             step="1"
                             :value="gifConfig.duration"
                             @input="handleDurationChange"
-                            style="flex: 1;"
                         />
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
-                        <label class="ind-checkbox-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-size: 13px; color: var(--text-primary);">
+                    <div class="transparent-bg-row">
+                        <label class="ind-checkbox-label transparent-checkbox-label">
                             <input 
                                 type="checkbox" 
                                 :checked="gifConfig.transparentBg"
@@ -318,5 +317,28 @@ function startExport() {
     background-color: var(--bg-dark-active);
     color: var(--text-active);
     border-color: var(--bg-dark-active);
+}
+
+.duration-controls-row,
+.transparent-bg-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 2px;
+}
+
+.duration-checkbox-label,
+.transparent-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.duration-slider {
+    flex: 1;
 }
 </style>

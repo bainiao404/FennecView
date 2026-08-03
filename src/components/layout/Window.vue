@@ -1,7 +1,5 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-const isCordova = !!window.cordova
-const boxMode = ref(false)
 
 // 假设设计稿基准宽度为 1280
 const DESIGN_WIDTH = 1280
@@ -41,7 +39,7 @@ updateScale()
 
 <template>
     <div class="app-container" :style="containerStyle">
-        <div :class="boxMode ? 'boxMode' : 'boxMode1'">
+        <div class="boxMode1">
             <slot></slot>
         </div>
     </div>
@@ -52,10 +50,9 @@ updateScale()
     position: absolute;
     left: 0;
     top: 0;
-    background: rgba(240, 240, 240, 1);
+    background: var(--bg-dark-app, #121212);
 }
 
-.boxMode,
 .boxMode1 {
     position: absolute;
     height: 100%;

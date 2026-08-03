@@ -1,41 +1,15 @@
 <script setup>
-import { ref, computed, markRaw } from 'vue'
-import {
-    BrowseIcon,
-    BrowseOffIcon,
-    AdjustmentIcon,
-    FilmIcon,
-    LayersIcon,
-    SettingIcon,
-    DownloadIcon,
-    BugIcon,
-    ToolsIcon,
-    ViewListIcon,
-    ImportIcon,
-    PlayIcon,
-    PauseIcon,
-    AddIcon
-} from 'tdesign-icons-vue-next'
+import { ref, computed } from 'vue'
 import { useUIStore } from '@/stores/uiStore'
 import { useI18nStore } from '@/stores/i18n'
+import { usePanelStore } from '@/stores/panelStore'
 import SpineCanvas from '@/components/canvas/SpineCanvas.vue'
 import SpineUserRectOverlay from '@/components/layout/SpineUserRectOverlay.vue'
 import LayerList from '@/components/layout/LayerList.vue'
 
-// Import redesigned panel components
-import PropertyPanel from '@/components/panels/PropertyPanel.vue'
-import AnimationAndSkinPanel from '@/components/panels/AnimationAndSkinPanel.vue'
-import LayersPanel from '@/components/panels/LayersPanel.vue'
-import SlotsPanel from '@/components/panels/SlotsPanel.vue'
-import ImportPanel from '@/components/panels/ImportPanel.vue'
-import ExportPanel from '@/components/panels/ExportPanel.vue'
-import DebugPanel from '@/components/panels/DebugPanel.vue'
-import ToolPanel from '@/components/panels/ToolPanel.vue'
-import SettingsPanel from '@/components/panels/SettingsPanel.vue'
-import AddPanel from '@/components/panels/AddPanel.vue'
-
 const uiStore = useUIStore()
 const i18n = useI18nStore()
+const panelStore = usePanelStore()
 
 const isElectron =
     typeof window !== 'undefined' &&
@@ -53,22 +27,11 @@ function handleTabClick(tab) {
     }
 }
 
-// Data-driven tabs configuration
-const sidebarTabs = [
-    { id: 'property', nameKey: 'tabProperty', icon: AdjustmentIcon, component: markRaw(PropertyPanel) },
-    { id: 'animationAndSkin', nameKey: 'tabAnimationSkin', icon: FilmIcon, component: markRaw(AnimationAndSkinPanel) },
-    { id: 'layers', nameKey: 'tabLayers', icon: LayersIcon, component: markRaw(LayersPanel) },
-    { id: 'slots', nameKey: 'tabSlots', icon: ViewListIcon, component: markRaw(SlotsPanel) },
-    { id: 'import', nameKey: 'tabImport', icon: ImportIcon, component: markRaw(ImportPanel) },
-    { id: 'add', nameKey: 'tabAdd', icon: AddIcon, component: markRaw(AddPanel) },
-    { id: 'export', nameKey: 'tabExport', icon: DownloadIcon, component: markRaw(ExportPanel) },
-    { id: 'debug', nameKey: 'tabDebug', icon: BugIcon, component: markRaw(DebugPanel) },
-    { id: 'tool', nameKey: 'tabTools', icon: ToolsIcon, component: markRaw(ToolPanel) },
-    { id: 'settings', nameKey: 'tabSettings', icon: SettingIcon, component: markRaw(SettingsPanel) }
-]
+// Data-driven tabs configuration loaded dynamically from Pinia Store
+const sidebarTabs = computed(() => panelStore.registeredTabs)
 
 const activeTabInfo = computed(() => {
-    return sidebarTabs.find(tab => tab.id === activeTab.value)
+    return sidebarTabs.value.find((tab) => tab.id === activeTab.value)
 })
 
 const activeTabTitle = computed(() => {
@@ -211,7 +174,9 @@ function handleBatchItemContextMenu(item, event) {
     left: 0;
     top: 0;
     z-index: 10;
-    transition: width 0.2s ease, border-color 0.2s ease;
+    transition:
+        width 0.2s ease,
+        border-color 0.2s ease;
     overflow: hidden;
 }
 
@@ -224,7 +189,6 @@ function handleBatchItemContextMenu(item, event) {
     width: 54px;
     height: 100%;
     background-color: var(--glass-bg-active);
-    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -432,7 +396,7 @@ function handleBatchItemContextMenu(item, event) {
 }
 
 .home-workspace.is-electron .left-dock {
-    top: 32px;
+    top: 31px;
     height: calc(100% - 32px);
 }
 

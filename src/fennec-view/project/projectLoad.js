@@ -80,7 +80,7 @@ const projectLoad = {
             }
             
             setTimeout(() => {
-                for (var j = 0; j < mCacheNode.length; j++) {
+                for (let j = 0; j < mCacheNode.length; j++) {
                     if (mCacheNode[j].state && mCacheNode[j].state.tracks && mCacheNode[j].state.tracks[0]) {
                         mCacheNode[j].state.tracks[0].time = 0;
                     }

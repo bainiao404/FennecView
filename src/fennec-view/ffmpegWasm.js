@@ -111,8 +111,8 @@ export async function startMp4Export() {
     await encoder.initialize();
     let maxCount = Math.floor((maxTime * 1000) / totalFrames);
     uiStore.updateExportMp4Status({ progressInfo: "0%" });
-    console.time(555);
-    for (var i = 0; i < maxCount; i++) {
+    console.time('MP4ExportLoop');
+    for (let i = 0; i < maxCount; i++) {
         let time = (i * totalFrames) / 1000;
         box.children.forEach((node) => {
             if (node.state) {
@@ -135,7 +135,7 @@ export async function startMp4Export() {
         await GKD.delay(0);
         uiStore.updateExportMp4Status({ progressInfo: Math.floor((i / maxCount) * 1000) / 10 + "%" });
     }
-    console.timeEnd(555);
+    console.timeEnd('MP4ExportLoop');
     await encoder.finalize(exportMp4Config.title + ".mp4");
     uiStore.updateExportMp4Status({ progressInfo: "Done" });
     app.start();
@@ -275,7 +275,7 @@ export async function detectSupportedCodec() {
         [4096, 2304],
         [4096, 2304],
     ];
-    for (var i = 0; i < codecsToTest.length; i++) {
+    for (let i = 0; i < codecsToTest.length; i++) {
         let codec = codecsToTest[i];
         let a = await checkMaxSupportedCodec(codec);
         if (a && a.supported) {
@@ -391,7 +391,7 @@ export async function startGifExport() {
         let originalAlpha = 1;
         let background = FennecView.canvas.background;
         
-        for (var i = 0; i < maxCount; i++) {
+        for (let i = 0; i < maxCount; i++) {
             let time = (i * totalFrames) / 1000;
             box.children.forEach((node) => {
                 if (node.state) {

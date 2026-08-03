@@ -1,6 +1,9 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
+import { useImportStore } from '@/stores/importStore'
+import TextControl from '@/components/panels/controls/TextControl.vue'
+import SelectControl from '@/components/panels/controls/SelectControl.vue'
 
 const props = defineProps({
     item: {
@@ -10,6 +13,7 @@ const props = defineProps({
 })
 
 const i18n = useI18nStore()
+const importStore = useImportStore()
 
 const config = computed(() => props.item.config)
 const entryFile = computed(() => props.item.entryFile)
@@ -25,6 +29,15 @@ function formatBytes(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
+
+// Control Schemas
+const nameSchema = { align: 'left' }
+const typeSchema = computed(() => ({
+    options: [
+        { value: 'image', label: i18n.locale === 'zh' ? '普通图片' : 'Regular Image' },
+        { value: 'spritesheet_grid', label: i18n.locale === 'zh' ? '单图精灵表 (网格分割)' : 'Grid Spritesheet' }
+    ]
+}))
 </script>
 
 <template>
@@ -32,7 +45,21 @@ function formatBytes(bytes) {
         <!-- Node name -->
         <div class="form-group">
             <label class="form-label">{{ i18n.locale === 'zh' ? '图层/节点名称' : 'Node Name' }}</label>
-            <input type="text" class="ind-input-text" v-model="config.name" />
+            <TextControl 
+                :value="config.name" 
+                @change="val => config.name = val" 
+                :schema="nameSchema" 
+            />
+        </div>
+
+        <!-- Resource type switch, only for image files -->
+        <div class="form-group" v-if="!isVideo">
+            <label class="form-label">{{ i18n.locale === 'zh' ? '导入类型' : 'Import Type' }}</label>
+            <SelectControl 
+                :value="item.type" 
+                @change="val => importStore.changeItemType(item.id, val)" 
+                :schema="typeSchema" 
+            />
         </div>
 
         <!-- Media file info -->

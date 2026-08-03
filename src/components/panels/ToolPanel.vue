@@ -1,10 +1,8 @@
 <script setup>
-import { useUIStore } from '@/stores/uiStore'
 import { useI18nStore } from '@/stores/i18n'
 import { useLayerStore } from '@/stores/layerStore'
 import FennecView from '@/fennec-view/FennecView'
 
-const uiStore = useUIStore()
 const i18n = useI18nStore()
 const layerStore = useLayerStore()
 

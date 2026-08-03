@@ -2,11 +2,11 @@ import { useUIStore } from '@/stores/uiStore'
 
 export default {
     onWindowResize: function () {
-        var div = document.getElementById('app_canvas')
+        const div = document.getElementById('app_canvas')
         if (!div) return
-        var canvas = this.canvas
+        const canvas = this.canvas
         if (!canvas || !canvas.app) return
-        var app = canvas.app
+        const app = canvas.app
         app.renderer.resize(div.offsetWidth, div.offsetHeight)
         if (app.canvas && app.canvas.style) {
             app.canvas.style.width = div.offsetWidth + 'px'
@@ -107,8 +107,8 @@ export default {
                 uiStore.updateBackgroundColor(value)
                 break
             case 'alpha':
-                this.canvas.background.alpha = value * 1
-                uiStore.updateBackgroundAlpha(value * 1)
+                this.canvas.background.alpha = Number(value)
+                uiStore.updateBackgroundAlpha(Number(value))
                 break
         }
     },
@@ -125,6 +125,7 @@ export default {
     },
 
     centerWorld: function () {
+        if (this.preview && this.preview.state) return
         if (this.canvas && this.canvas.world && this.canvas.app) {
             const centerX = this.canvas.app.screen.width / 2
             const centerY = this.canvas.app.screen.height / 2
@@ -136,7 +137,7 @@ export default {
     },
 
     updateScale: function () {
-        let world = this.canvas.world
+        const world = this.canvas.world
         if (this.canvas.crosshair && this.canvas.crosshair.redraw) {
             this.canvas.crosshair.redraw({
                 startX: world.x,

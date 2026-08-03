@@ -1,19 +1,23 @@
 <script setup>
+import { ref } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import spineBatchRename from '@/fennec-view/batchRename'
 
 const i18n = useI18nStore()
+const renameFilesList = ref([])
 
-function handleDrop(e) {
+async function handleDrop(e) {
     e.preventDefault()
     if (spineBatchRename?.loadFilesFromEvent) {
-        spineBatchRename.loadFilesFromEvent(e)
+        const files = await spineBatchRename.loadFilesFromEvent(e)
+        renameFilesList.value = (files || []).filter(f => f.endName)
     }
 }
 
-function startRename() {
+async function startRename() {
     if (spineBatchRename?.runBatchRename) {
-        spineBatchRename.runBatchRename()
+        const files = await spineBatchRename.runBatchRename()
+        renameFilesList.value = files || []
     }
 }
 </script>
@@ -31,8 +35,24 @@ function startRename() {
                     <span class="drop-text">{{ i18n.t('dragFilesHere') }}</span>
                 </div>
                 
-                <!-- ID is required by script/batchRename.js -->
-                <div id="toolView-batchRename-list" class="rename-list-box ind-list-box"></div>
+                <div class="rename-list-box ind-list-box">
+                    <div 
+                        v-for="(file, idx) in renameFilesList" 
+                        :key="idx" 
+                        class="rename-item"
+                    >
+                        <div class="file-path">{{ file.place }}</div>
+                        <span class="old-name">{{ file.name }}</span> =>
+                        <span class="new-name">{{ file.endName }}</span>
+                        <span 
+                            v-if="file.status" 
+                            class="status-text" 
+                            :class="file.status === 'ok' ? 'status-ok' : 'status-err'"
+                        >
+                             => {{ file.status }}
+                        </span>
+                    </div>
+                </div>
                 
                 <button class="ind-btn primary-btn rename-start-btn" @click="startRename">
                     {{ i18n.t('btnRenameStart') }}
@@ -91,6 +111,38 @@ function startRename() {
     padding: 10px;
     font-family: monospace;
     font-size: 12px;
+    overflow-y: auto;
+}
+
+.rename-item {
+    text-align: left;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border-color, #333333);
+}
+
+.file-path {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.old-name {
+    color: #ef4444;
+}
+
+.new-name {
+    color: #22c55e;
+}
+
+.status-text {
+    font-weight: bold;
+}
+
+.status-text.status-ok {
+    color: #ec4899;
+}
+
+.status-text.status-err {
+    color: #ef4444;
 }
 
 .rename-start-btn {

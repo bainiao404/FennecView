@@ -2,29 +2,13 @@
 import { computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import FennecView from '@/fennec-view/FennecView'
-import { isElectron } from '@/assets/gkd-js-0.2/env.js'
+import { platformService } from '@/services/platform/PlatformService'
 
 import { useUIStore } from '@/stores/uiStore'
-import { useLayerStore } from '@/stores/layerStore'
-import { readBlobAsArrayBuffer } from '@/fennec-view/helpers'
-import { blobRegistry } from '@/services/resources/BlobRegistry'
+import { readBlobAsArrayBuffer } from '@/utils/helpers'
 
 const i18n = useI18nStore()
 const uiStore = useUIStore()
-const layerStore = useLayerStore()
-
-const PIXI = window.PIXI
-
-async function loadTexture(url) {
-    let loadOptions = url
-    if (url && typeof url === 'string' && url.startsWith('blob:')) {
-        loadOptions = {
-            src: url,
-            loadParser: 'loadTextures'
-        }
-    }
-    return await PIXI.Assets.load(loadOptions)
-}
 
 const currentImportTextureMode = computed({
     get() {
@@ -36,10 +20,6 @@ const currentImportTextureMode = computed({
         }
     }
 })
-
-function setTextureMode(mode) {
-    if (typeof window.setTextureMode === 'function') window.setTextureMode(mode)
-}
 
 function getCordovaFile(path) {
     return new Promise((resolve, reject) => {
@@ -54,7 +34,7 @@ function getCordovaFile(path) {
 }
 
 function loadProject() {
-    if (isElectron()) {
+    if (platformService.isElectron()) {
         FennecView.loadProject()
     } else if (typeof window.cordova !== 'undefined') {
         uiStore.openCordovaFileView({
@@ -102,6 +82,7 @@ function importFiles() {
                 for (let fileInfo of selected) {
                     try {
                         const fileObj = await getCordovaFile(fileInfo.path)
+                        fileObj.path = fileInfo.path
                         filesToLoad.push(fileObj)
                     } catch (e) {
                         console.error('获取文件失败:', fileInfo.path, e)
@@ -142,6 +123,7 @@ function importFolder() {
                     for (let filePath of filePaths) {
                         try {
                             const fileObj = await getCordovaFile(filePath)
+                            fileObj.path = filePath
                             filesToLoad.push(fileObj)
                         } catch (e) {
                             console.error('获取文件夹内文件失败:', filePath, e)
@@ -171,87 +153,28 @@ function importFolder() {
     }
 }
 
-function importMultiFrame() {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.webkitdirectory = true
-    input.directory = true
-    input.onchange = async (e) => {
-        const files = Array.from(e.target.files)
-        if (!files || files.length === 0) return
-        
-        const imageFiles = files.filter(f => /\.(png|jpg|jpeg|webp)$/i.test(f.name))
-        if (imageFiles.length === 0) return
-        
-        imageFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
-        
-        const textures = []
-        const imagesInfo = []
-        for (let file of imageFiles) {
-            const url = blobRegistry.createURL(file)
-            const texture = await loadTexture(url)
-            textures.push(texture)
-            imagesInfo.push({
-                name: file.name,
-                url: url
-            })
-        }
-        
-        if (textures.length > 0 && typeof FennecView.addAnimatedSpriteNode === 'function') {
-            const baseName = imageFiles[0].name.replace(/\.[^/.]+$/, "")
-            await FennecView.addAnimatedSpriteNode(textures, 'images', {
-                name: baseName + '_anim',
-                imagesInfo
-            })
-        }
-    }
-    input.click()
-}
-
-function importGridSpritesheet() {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = (e) => {
-        const file = e.target.files[0]
-        if (!file) return
-        layerStore.add({
-            name: 'ImportSpritesheetView',
-            singleton: true,
-            props: { file }
-        })
-    }
-    input.click()
-}
 </script>
 
 <template>
     <div class="import-panel">
         <div class="panel-section">
             <div class="section-title">{{ i18n.locale === 'zh' ? '项目管理' : 'Project Management' }}</div>
-            <div class="ind-btn" @click="loadProject" style="width: 100%; text-align: center; box-sizing: border-box;">
+            <div class="ind-btn project-btn" @click="loadProject">
                 {{ i18n.t('btnLoadProject') }}
             </div>
         </div>
 
         <div class="panel-section">
             <div class="section-title">{{ i18n.locale === 'zh' ? '资源导入' : 'Resource Import' }}</div>
-            <div class="import-buttons-row" style="margin-bottom: 8px;">
-                <div class="ind-btn" @click="importFiles" style="flex: 1; text-align: center; box-sizing: border-box; font-size: 12px; padding: 6px 4px;">
+            <div class="import-buttons-row">
+                <div class="ind-btn import-btn" @click="importFiles">
                     {{ i18n.locale === 'zh' ? '导入文件' : 'Import Files' }}
                 </div>
-                <div class="ind-btn" @click="importFolder" style="flex: 1; text-align: center; box-sizing: border-box; font-size: 12px; padding: 6px 4px;">
+                <div class="ind-btn import-btn" @click="importFolder">
                     {{ i18n.locale === 'zh' ? '导入文件夹' : 'Import Folder' }}
                 </div>
             </div>
-            <div class="import-buttons-row">
-                <div class="ind-btn" @click="importMultiFrame" style="flex: 1; text-align: center; box-sizing: border-box; font-size: 12px; padding: 6px 4px;">
-                    {{ i18n.locale === 'zh' ? '导入多帧精灵图' : 'Import Multi-frame Sprites' }}
-                </div>
-                <div class="ind-btn" @click="importGridSpritesheet" style="flex: 1; text-align: center; box-sizing: border-box; font-size: 12px; padding: 6px 4px;">
-                    {{ i18n.locale === 'zh' ? '导入单图精灵表' : 'Import Grid Spritesheet' }}
-                </div>
-            </div>
+
         </div>
 
         <div class="panel-section">
@@ -259,7 +182,6 @@ function importGridSpritesheet() {
             <select
                 v-model="currentImportTextureMode"
                 class="attr-select"
-                style="width: 100%;"
             >
                 <option :value="0">{{ i18n.t('premultClose') }}</option>
                 <option :value="1">{{ i18n.t('premultOnUpload') }}</option>
@@ -309,9 +231,24 @@ function importGridSpritesheet() {
     accent-color: var(--bg-dark-active);
 }
 
+.project-btn {
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
+}
+
 .import-buttons-row {
     display: flex;
     gap: 8px;
+    margin-bottom: 8px;
+}
+
+.import-btn {
+    flex: 1;
+    text-align: center;
+    box-sizing: border-box;
+    font-size: 12px;
+    padding: 6px 4px;
 }
 
 .attr-select {

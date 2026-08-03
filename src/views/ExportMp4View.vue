@@ -119,8 +119,8 @@ function startExport() {
                         <span v-if="!mp4Config.autoDuration" class="value-badge">{{ mp4Config.duration }}s</span>
                         <span v-else class="value-badge">{{ i18n.t('autoDurationLabel') }}</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 2px;">
-                        <label class="ind-checkbox-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-size: 13px; color: var(--text-primary);">
+                    <div class="duration-controls-row">
+                        <label class="ind-checkbox-label duration-checkbox-label">
                             <input 
                                 type="checkbox" 
                                 :checked="mp4Config.autoDuration"
@@ -130,14 +130,13 @@ function startExport() {
                         </label>
                         <input 
                             v-if="!mp4Config.autoDuration"
-                            class="ind-range"
+                            class="ind-range duration-slider"
                             type="range"
                             min="1"
                             max="300"
                             step="1"
                             :value="mp4Config.duration"
                             @input="handleDurationChange"
-                            style="flex: 1;"
                         />
                     </div>
                 </div>
@@ -287,5 +286,26 @@ function startExport() {
     background-color: var(--bg-dark-active);
     color: var(--text-active);
     border-color: var(--bg-dark-active);
+}
+
+.duration-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 2px;
+}
+
+.duration-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.duration-slider {
+    flex: 1;
 }
 </style>

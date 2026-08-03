@@ -4,31 +4,13 @@
  */
 
 :root {
-    --glass-bg: rgba(30, 30, 30, 0.7);
-    --glass-bg-hover: rgba(45, 45, 45, 0.85);
-    --glass-bg-active: rgba(18, 18, 18, 0.6);
-    --glass-blur: blur(12px);
-    --glass-border: 1px solid var(--border-color);
-
-    /* Specific elements */
-    --glass-blur-titlebar: blur(8px);
-    --glass-bg-titlebar: rgba(30, 30, 30, 0.5);
-    
-    --glass-blur-controls: blur(4px);
-    --glass-bg-controls: rgba(18, 18, 18, 0.6);
-    
-    --glass-blur-canvas: blur(4px);
-    --glass-bg-canvas: rgba(18, 18, 18, 0.6);
-    
-    --glass-blur-joystick: blur(8px);
-}
-
-.no-glassmorphism {
     --glass-bg: rgba(22, 22, 22, 0.96);
     --glass-bg-hover: rgba(35, 35, 35, 0.98);
     --glass-bg-active: rgba(12, 12, 12, 0.98);
     --glass-blur: none;
-    
+    --glass-border: 1px solid var(--border-color);
+
+    /* Specific elements */
     --glass-blur-titlebar: none;
     --glass-bg-titlebar: rgba(22, 22, 22, 0.96);
     
@@ -37,8 +19,6 @@
     
     --glass-blur-canvas: none;
     --glass-bg-canvas: rgba(22, 22, 22, 0.96);
-    
-    --glass-blur-joystick: none;
 }
 
 /* ========== 0_pc.css - 滚动条 ========== */

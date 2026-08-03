@@ -1,5 +1,6 @@
-import { isElectron } from '@/assets/gkd-js-0.2/env.js'
+import { platformService } from '@/services/platform/PlatformService'
 import { readdirAllFile } from '@/assets/gkd-js-0.2/fs.js'
+import { createFileItem } from '../models/FileItem.js'
 
 /**
  * Normalizes backslashes to forward slashes.
@@ -28,14 +29,14 @@ async function scanDirectoryEntry(dirEntry, baseRelativePath = '') {
             })
             // Attach a custom relative path
             const rel = currentRelPath ? `${currentRelPath}/${entry.name}` : entry.name
-            files.push({
+            files.push(createFileItem({
                 name: entry.name,
                 size: file.size,
                 path: '',
                 relativePath: rel,
                 file: file,
                 isNative: false
-            })
+            }))
         } else if (entry.isDirectory) {
             const reader = entry.createReader()
             let entries = []
@@ -67,7 +68,7 @@ export const FileScanner = {
         if (!dataTransfer) return files
         
         // 1. Electron or native paths check
-        if (isElectron() && dataTransfer.files && dataTransfer.files.length > 0) {
+        if (platformService.isElectron() && dataTransfer.files && dataTransfer.files.length > 0) {
             const fs = window.require ? window.require('fs') : require('fs')
             for (let i = 0; i < dataTransfer.files.length; i++) {
                 const f = dataTransfer.files[i]
@@ -79,14 +80,14 @@ export const FileScanner = {
                         const recursiveFiles = await this.scanLocalDirectory(path)
                         files.push(...recursiveFiles)
                     } else {
-                        files.push({
+                        files.push(createFileItem({
                             name: f.name,
                             size: stats.size,
                             path: path,
                             relativePath: f.name,
                             file: f,
                             isNative: true
-                        })
+                        }))
                     }
                 } catch (e) {
                     console.error('Error scanning dropped path in Electron:', path, e)
@@ -108,14 +109,14 @@ export const FileScanner = {
                 } else if (item.getAsFile) {
                     const f = item.getAsFile()
                     if (f) {
-                        files.push({
+                        files.push(createFileItem({
                             name: f.name,
                             size: f.size,
                             path: '',
                             relativePath: f.name,
                             file: f,
                             isNative: false
-                        })
+                        }))
                     }
                 }
             }
@@ -123,14 +124,14 @@ export const FileScanner = {
             // Fallback for standard files
             for (let i = 0; i < dataTransfer.files.length; i++) {
                 const f = dataTransfer.files[i]
-                files.push({
+                files.push(createFileItem({
                     name: f.name,
                     size: f.size,
                     path: '',
                     relativePath: f.name,
                     file: f,
                     isNative: false
-                })
+                }))
             }
         }
         
@@ -148,14 +149,14 @@ export const FileScanner = {
             const f = fileList[i]
             // If the folder was imported using webkitdirectory, relativePath is stored in webkitRelativePath
             const relPath = normalizePath(f.webkitRelativePath || f.name)
-            files.push({
+            files.push(createFileItem({
                 name: f.name,
                 size: f.size,
                 path: f.path ? normalizePath(f.path) : '',
                 relativePath: relPath,
                 file: f,
-                isNative: isElectron() && !!f.path
-            })
+                isNative: platformService.isElectron() && !!f.path
+            }))
         }
         return files
     },
@@ -183,7 +184,7 @@ export const FileScanner = {
             let fileObj = null
             let size = 0
             
-            if (isElectron()) {
+            if (platformService.isElectron()) {
                 const fs = window.require ? window.require('fs') : require('fs')
                 try {
                     const stats = fs.statSync(normAbsPath)
@@ -193,14 +194,14 @@ export const FileScanner = {
                 }
             }
             
-            files.push({
+            files.push(createFileItem({
                 name: name,
                 size: size,
                 path: normAbsPath,
                 relativePath: relPath,
                 file: null,
                 isNative: true
-            })
+            }))
         }
         return files
     }

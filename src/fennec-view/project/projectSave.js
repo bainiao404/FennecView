@@ -53,6 +53,7 @@ const projectSave = {
                 if (node.nodeData) {
                     let data = await this.copyNodeAssets(node, zip, true);
                     if (data) {
+                        data.resourceId = node.resourceId || "";
                         projectData.nodes.push(data);
                     }
                 }

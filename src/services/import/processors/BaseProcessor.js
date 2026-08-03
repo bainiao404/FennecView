@@ -1,5 +1,6 @@
 import { ioManager } from '@/services/io/IOManager'
-import { readBlobAsText, readBlobAsArrayBuffer } from '@/fennec-view/helpers'
+import { readBlobAsText, readBlobAsArrayBuffer } from '@/utils/helpers';
+import { MimeUtil } from '@/utils/MimeUtil';
 
 export class BaseProcessor {
     /**
@@ -43,6 +44,9 @@ export class BaseProcessor {
      * Read file content as text.
      */
     async readFileAsText(fileItem) {
+        if (fileItem && typeof fileItem.readAsText === 'function') {
+            return await fileItem.readAsText();
+        }
         if (fileItem.isNative) {
             const buffer = await ioManager.getDriver().read(fileItem.path);
             return new TextDecoder('utf-8').decode(new Uint8Array(buffer));
@@ -55,6 +59,9 @@ export class BaseProcessor {
      * Read file content as ArrayBuffer.
      */
     async readFileAsArrayBuffer(fileItem) {
+        if (fileItem && typeof fileItem.readAsArrayBuffer === 'function') {
+            return await fileItem.readAsArrayBuffer();
+        }
         if (fileItem.isNative) {
             return await ioManager.getDriver().read(fileItem.path);
         } else {
@@ -62,27 +69,4 @@ export class BaseProcessor {
         }
     }
 
-    /**
-     * Convert a FennecFile item into a Blob URL.
-     */
-    async getFileBlobUrl(fileItem) {
-        if (!fileItem) return '';
-        if (fileItem.isNative) {
-            const buffer = await this.readFileAsArrayBuffer(fileItem);
-            let mimeType = 'application/octet-stream';
-            const name = fileItem.name.toLowerCase();
-            if (name.endsWith('.png')) mimeType = 'image/png';
-            else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mimeType = 'image/jpeg';
-            else if (name.endsWith('.webp')) mimeType = 'image/webp';
-            else if (name.endsWith('.gif')) mimeType = 'image/gif';
-            else if (name.endsWith('.json')) mimeType = 'application/json';
-            else if (name.endsWith('.atlas')) mimeType = 'text/plain';
-            const blob = new Blob([buffer], { type: mimeType });
-            const { blobRegistry } = await import('@/services/resources/BlobRegistry');
-            return blobRegistry.createURL(blob);
-        } else {
-            const { blobRegistry } = await import('@/services/resources/BlobRegistry');
-            return blobRegistry.createURL(fileItem.file);
-        }
-    }
 }

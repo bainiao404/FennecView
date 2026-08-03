@@ -70,7 +70,6 @@ export default {
   renderResolution: 'Render Scale',
   backgroundColor: 'Background Color',
   languageSelect: 'Language',
-  glassmorphismEffect: 'Glassmorphism Effect',
   pixiAntialias: 'PIXI Antialiasing',
   reloadRequired: 'Reload required',
   optionEnabled: 'Enabled',

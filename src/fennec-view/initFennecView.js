@@ -9,8 +9,16 @@ export async function initFennecView() {
     // Start the application flow
     FennecView.start();
     
-    // Add window resize listener
-    window.addEventListener('resize', () => FennecView.onWindowResize());
+    // Use ResizeObserver on app_canvas to handle initial layout and size changes robustly
+    setTimeout(() => {
+        const div = document.getElementById('app_canvas');
+        if (div) {
+            const observer = new ResizeObserver(() => {
+                FennecView.onWindowResize();
+            });
+            observer.observe(div);
+        }
+    }, 50);
     
     // Initial resize trigger
     setTimeout(() => {

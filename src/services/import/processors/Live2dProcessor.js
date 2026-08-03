@@ -1,7 +1,7 @@
 import { BaseProcessor } from './BaseProcessor'
 import FennecView from '@/fennec-view/FennecView'
 import { blobRegistry } from '@/services/resources/BlobRegistry'
-import { isElectron } from '@/assets/gkd-js-0.2/env.js'
+import { fileResourceManager } from '@/services/resources/FileResourceManager'
 
 export class Live2dProcessor extends BaseProcessor {
     /**
@@ -139,19 +139,35 @@ export class Live2dProcessor extends BaseProcessor {
 
         const entryFile = importItem.entryFile;
 
-        // If we are in Electron and using native paths, load from disk directly
-        if (isElectron() && entryFile.isNative) {
-            const localPath = entryFile.path;
-            const nodes = await FennecView.addSpineNode([localPath]);
+        if (entryFile.isNative) {
+            const localPath = await entryFile.getLoadUrl();
+            fileResourceManager.registerFile(entryFile.name, null, { path: localPath });
+            fileResourceManager.addFileToGroup(importItem.id, localPath);
+
+            const pool = [...importItem.associatedFiles.crucial, ...importItem.associatedFiles.optional];
+            for (const file of pool) {
+                const fPath = await file.getLoadUrl();
+                fileResourceManager.registerFile(file.name, null, { path: fPath });
+                fileResourceManager.addFileToGroup(importItem.id, fPath);
+            }
+
+            const live2dSrcObj = {
+                type: 'live2d',
+                path: [localPath],
+                resourceId: importItem.id
+            };
+
+            const nodes = await FennecView.addSpineNode([live2dSrcObj]);
             const mNode = nodes[0];
             if (mNode) {
                 mNode.name = importItem.config.name;
+                mNode.originalFileName = entryFile.name;
             }
             return nodes;
         }
 
         // Web mode: use Blob URLs and path mapping
-        const text = await this.readFileAsText(entryFile);
+        const text = await entryFile.readAsText();
         const modelJson = JSON.parse(text);
         const originalModelJson = JSON.parse(JSON.stringify(modelJson));
 
@@ -187,13 +203,8 @@ export class Live2dProcessor extends BaseProcessor {
                         const matchFile = findInGroup(val);
                         if (matchFile) {
                             const p = (async () => {
-                                const buffer = await importItem.processor.readFileAsArrayBuffer(matchFile);
-                                let mimeType = 'application/octet-stream';
-                                const name = matchFile.name.toLowerCase();
-                                if (name.endsWith('.png')) mimeType = 'image/png';
-                                else if (name.endsWith('.json')) mimeType = 'application/json';
-                                const blob = new Blob([buffer], { type: mimeType });
-                                const blobUrl = blobRegistry.createURL(blob);
+                                const blobUrl = await matchFile.getBlobUrl();
+                                fileResourceManager.addFileToGroup(importItem.id, blobUrl);
                                 
                                 // Map normalized path
                                 let normVal = val.replace(/\\/g, '/');
@@ -246,11 +257,13 @@ export class Live2dProcessor extends BaseProcessor {
         const rewrittenJsonBlob = new Blob([JSON.stringify(modelJson, null, 4)], {
             type: 'application/json',
         });
-        const rewrittenJsonBlobUrl = blobRegistry.createURL(rewrittenJsonBlob);
+        const rewrittenJsonBlobUrl = blobRegistry.createURL(rewrittenJsonBlob, entryFile.name);
+        fileResourceManager.addFileToGroup(importItem.id, rewrittenJsonBlobUrl);
 
         const live2dSrcObj = {
             type: 'live2d',
-            path: [rewrittenJsonBlobUrl]
+            path: [rewrittenJsonBlobUrl],
+            resourceId: importItem.id
         };
 
         const nodes = await FennecView.addSpineNode([live2dSrcObj]);
@@ -262,6 +275,7 @@ export class Live2dProcessor extends BaseProcessor {
                 originalModelJson: originalModelJson,
                 pathMap: pathMap,
             };
+            mNode.originalFileName = entryFile.name;
         }
         return nodes;
     }

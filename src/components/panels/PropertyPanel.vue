@@ -3,6 +3,23 @@ import { useUIStore } from '@/stores/uiStore'
 import { useI18nStore } from '@/stores/i18n'
 import { computed } from 'vue'
 import FennecView from '@/fennec-view/FennecView'
+import ReadonlyControl from './controls/ReadonlyControl.vue'
+import SelectControl from './controls/SelectControl.vue'
+import SliderControl from './controls/SliderControl.vue'
+import ColorControl from './controls/ColorControl.vue'
+import NumberControl from './controls/NumberControl.vue'
+import BooleanControl from './controls/BooleanControl.vue'
+import TextControl from './controls/TextControl.vue'
+
+const controlMap = {
+    readonly: ReadonlyControl,
+    select: SelectControl,
+    slider: SliderControl,
+    color: ColorControl,
+    number: NumberControl,
+    boolean: BooleanControl,
+    text: TextControl
+}
 
 const uiStore = useUIStore()
 const i18n = useI18nStore()
@@ -48,6 +65,14 @@ const live2dTracking = computed({
             FennecView.updateNodeProperty('live2dTracking', value)
         }
     }
+})
+
+import { nodeRegistry } from '@/fennec-view/core/NodeRegistry'
+
+const customPropertyComponent = computed(() => {
+    const type = uiStore.propertyPanel.currentNode?.type
+    const def = nodeRegistry.get(type)
+    return def?.propertyComponent || null
 })
 
 const DEFAULT_PROPERTY_SCHEMA = {
@@ -163,6 +188,7 @@ function getDisplayName(key) {
         animationSpeed: i18n.locale === 'zh' ? '帧间隔 (毫秒)' : 'Frame Interval (ms)',
         animationLoop: i18n.locale === 'zh' ? '循环播放' : 'Loop Playback',
         animationPlaying: i18n.locale === 'zh' ? '正在播放' : 'Is Playing',
+        resolution: i18n.locale === 'zh' ? '渲染分辨率' : 'Resolution'
     }
     return maps[key] || key
 }
@@ -171,12 +197,12 @@ function isEditable(key) {
     if (key === 'width' || key === 'height') {
         return uiStore.propertyPanel.currentNode?.type === 'rect' || uiStore.propertyPanel.currentNode?.type === 'video'
     }
-    return ['name', 'x', 'y', 'radius', 'borderWidth', 'borderColor', 'scaleX', 'scaleY', 'rotation', 'alpha', 'text', 'fontSize', 'fontFamily', 'fill', 'align', 'videoLoop', 'videoMuted', 'videoVolume', 'videoPlaying', 'animationSpeed', 'animationLoop', 'animationPlaying'].includes(key)
+    return ['name', 'x', 'y', 'radius', 'borderWidth', 'borderColor', 'scaleX', 'scaleY', 'rotation', 'alpha', 'text', 'fontSize', 'fontFamily', 'fill', 'align', 'videoLoop', 'videoMuted', 'videoVolume', 'videoPlaying', 'animationSpeed', 'animationLoop', 'animationPlaying', 'resolution'].includes(key)
 }
 
 function handleAttributeChange(key, value) {
     let finalValue = value
-    const numericKeys = ['x', 'y', 'width', 'height', 'radius', 'borderWidth', 'scaleX', 'scaleY', 'rotation', 'alpha', 'fontSize', 'videoVolume', 'animationSpeed']
+    const numericKeys = ['x', 'y', 'width', 'height', 'radius', 'borderWidth', 'scaleX', 'scaleY', 'rotation', 'alpha', 'fontSize', 'videoVolume', 'animationSpeed', 'resolution']
     if (numericKeys.includes(key)) {
         finalValue = parseFloat(value)
         if (isNaN(finalValue)) {
@@ -296,92 +322,15 @@ function handleCameraChange(key, value) {
                 v-for="attr in propertyPanel.propertyAttributes"
                 :key="attr.key"
                 class="attribute-row"
-                :class="{'align-top': ['slider', 'color'].includes(getPropertySchema(attr.key).type)}"
             >
                 <span class="attr-key">{{ getDisplayName(attr.key) }}</span>
                 
                 <div class="attr-input-wrapper">
-                    <!-- Read-only -->
-                    <span v-if="getPropertySchema(attr.key).type === 'readonly'" class="attr-val">
-                        {{ attr.value }}
-                    </span>
-
-                    <!-- Select dropdown -->
-                    <select
-                        v-else-if="getPropertySchema(attr.key).type === 'select'"
+                    <component
+                        :is="controlMap[getPropertySchema(attr.key).type] || TextControl"
                         :value="attr.value"
-                        @change="handleAttributeChange(attr.key, $event.target.value)"
-                        class="attr-select"
-                    >
-                        <option
-                            v-for="opt in getPropertySchema(attr.key).options"
-                            :key="opt.value"
-                            :value="opt.value"
-                        >
-                            {{ opt.label }}
-                        </option>
-                    </select>
-
-                    <!-- Range / Slider -->
-                    <div v-else-if="getPropertySchema(attr.key).type === 'slider'" class="slider-control-wrapper">
-                        <input
-                            type="range"
-                            :value="attr.value"
-                            :min="getPropertySchema(attr.key).min ?? 0"
-                            :max="getPropertySchema(attr.key).max ?? 1"
-                            :step="getPropertySchema(attr.key).step ?? 0.01"
-                            @input="handleAttributeChange(attr.key, $event.target.value)"
-                            class="attr-slider"
-                        />
-                        <span class="slider-val-readout">{{ attr.value }}</span>
-                    </div>
-
-                    <!-- Color picker -->
-                    <div v-else-if="getPropertySchema(attr.key).type === 'color'" class="color-control-wrapper">
-                        <input
-                            type="color"
-                            :value="attr.value"
-                            @input="handleAttributeChange(attr.key, $event.target.value)"
-                            class="attr-color-picker"
-                        />
-                        <input
-                            type="text"
-                            :value="attr.value"
-                            @change="handleAttributeChange(attr.key, $event.target.value)"
-                            @keydown.enter="$event.target.blur()"
-                            class="attr-input color-hex-input"
-                        />
-                    </div>
-
-                    <!-- Number -->
-                    <input
-                        v-else-if="getPropertySchema(attr.key).type === 'number'"
-                        type="number"
-                        :value="attr.value"
-                        :step="getPropertySchema(attr.key).step ?? 1"
-                        @change="handleAttributeChange(attr.key, $event.target.value)"
-                        @keydown.enter="$event.target.blur()"
-                        class="attr-input"
-                    />
-
-                    <!-- Boolean / Checkbox switch -->
-                    <label v-else-if="getPropertySchema(attr.key).type === 'boolean'" class="ind-switch">
-                        <input
-                            type="checkbox"
-                            :checked="attr.value"
-                            @change="handleAttributeChange(attr.key, $event.target.checked)"
-                        />
-                        <span class="switch-slider"></span>
-                    </label>
-
-                    <!-- Fallback / Text input -->
-                    <input
-                        v-else
-                        type="text"
-                        :value="attr.value"
-                        @change="handleAttributeChange(attr.key, $event.target.value)"
-                        @keydown.enter="$event.target.blur()"
-                        class="attr-input"
+                        :schema="getPropertySchema(attr.key)"
+                        @change="handleAttributeChange(attr.key, $event)"
                     />
                 </div>
             </div>
@@ -411,6 +360,14 @@ function handleCameraChange(key, value) {
                     <span class="switch-slider"></span>
                 </label>
             </div>
+
+            <!-- Dynamically loaded custom property components for plugins -->
+            <component 
+                v-slot:default
+                v-if="customPropertyComponent" 
+                :is="customPropertyComponent" 
+                :node="propertyPanel.currentNode" 
+            />
         </div>
     </div>
 </template>
@@ -446,14 +403,14 @@ function handleCameraChange(key, value) {
     padding-top: 10px;
 }
 
-.node-header-row {
+:deep(.node-header-row) {
     padding: 6px 4px;
     margin-bottom: 4px;
     display: flex;
     align-items: center;
 }
 
-.node-header-title {
+:deep(.node-header-title) {
     font-size: 13px;
     font-weight: bold;
     color: var(--text-primary);
@@ -472,7 +429,7 @@ function handleCameraChange(key, value) {
     gap: 4px;
 }
 
-.attribute-row {
+:deep(.attribute-row) {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -482,28 +439,25 @@ function handleCameraChange(key, value) {
     font-size: 12px;
 }
 
-.attribute-row.align-top {
-    align-items: flex-start;
-}
 
 .pma-row {
     margin-top: 8px;
     border-top: 1px solid var(--border-color);
 }
 
-.attr-key {
+:deep(.attr-key) {
     color: var(--text-secondary);
     line-height: 22px;
 }
 
-.attr-input-wrapper {
+:deep(.attr-input-wrapper) {
     flex: 1;
     max-width: 140px;
     display: flex;
     justify-content: flex-end;
 }
 
-.attr-input {
+:deep(.attr-input) {
     width: 100%;
     background-color: var(--bg-dark-panel, #1e1e1e);
     border: 1px solid var(--border-color, #333);
@@ -518,11 +472,11 @@ function handleCameraChange(key, value) {
     box-sizing: border-box;
 }
 
-.attr-input:focus {
+:deep(.attr-input:focus) {
     border-color: var(--bg-dark-active, #0052d9);
 }
 
-.attr-select {
+:deep(.attr-select) {
     width: 100%;
     background-color: var(--bg-dark-panel, #1e1e1e);
     border: 1px solid var(--border-color, #333);
@@ -536,7 +490,7 @@ function handleCameraChange(key, value) {
     box-sizing: border-box;
 }
 
-.attr-select:focus {
+:deep(.attr-select:focus) {
     border-color: var(--bg-dark-active, #0052d9);
 }
 
@@ -545,16 +499,19 @@ function handleCameraChange(key, value) {
     align-items: center;
     gap: 8px;
     width: 100%;
+    min-width: 0;
 }
 
 .attr-slider {
     flex: 1;
+    min-width: 0;
     height: 4px;
     background: var(--border-color, #333);
     border-radius: 2px;
     outline: none;
     cursor: pointer;
     -webkit-appearance: none;
+    appearance: none;
 }
 
 .attr-slider::-webkit-slider-thumb {
@@ -568,6 +525,20 @@ function handleCameraChange(key, value) {
 }
 
 .attr-slider::-webkit-slider-thumb:hover {
+    background: var(--bg-dark-active, #0052d9);
+}
+
+.attr-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-active, #fff);
+    border: 1px solid var(--border-color, #333);
+    cursor: pointer;
+    transition: background-color 0.1s;
+}
+
+.attr-slider::-moz-range-thumb:hover {
     background: var(--bg-dark-active, #0052d9);
 }
 
@@ -654,5 +625,81 @@ input:checked + .switch-slider {
 input:checked + .switch-slider:before {
     transform: translateX(14px);
     background-color: var(--text-active, #fff);
+}
+
+.stand-diff-section {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+:deep(.section-divider) {
+    border-top: 1px dashed var(--border-color);
+    margin: 15px 0 10px 0;
+}
+
+:deep(.disabled-row) {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.fg-offset-table {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+    background-color: var(--bg-dark-input);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.fg-offset-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.fg-offset-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.fg-offset-name {
+    font-size: 11px;
+    color: var(--text-primary);
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fg-offset-inputs {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.fg-input-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.fg-input-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.fg-input {
+    width: 50px !important;
+    text-align: center;
+    padding: 2px 4px !important;
+    font-size: 11px !important;
+    height: auto !important;
 }
 </style>

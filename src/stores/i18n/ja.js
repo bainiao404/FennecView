@@ -70,7 +70,6 @@ export default {
   renderResolution: 'レンダリング倍率',
   backgroundColor: '背景色',
   languageSelect: '言語設定',
-  glassmorphismEffect: 'グラスモーフィズム効果',
   pixiAntialias: 'PIXI アンチエイリアス',
   reloadRequired: '再読み込みが必要',
   optionEnabled: '有効',

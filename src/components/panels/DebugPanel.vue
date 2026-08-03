@@ -52,7 +52,6 @@ function toggleDebugEnabled(val) {
             <span class="row-label">{{ i18n.t('debugLineWidth') }} ({{ debugStyle.lineWidth }})</span>
             <input
                 class="ind-range"
-                name="spine_premult"
                 type="range"
                 min="1"
                 max="10"
@@ -64,7 +63,6 @@ function toggleDebugEnabled(val) {
         <div class="checkbox-group">
             <label class="ind-checkbox-label">
                 <input
-                    name="spine_premult"
                     type="checkbox"
                     :checked="debugStyle.drawMeshHull"
                     @change="(e) => setDebug('drawMeshHull', e.target.checked)"
@@ -73,7 +71,6 @@ function toggleDebugEnabled(val) {
             </label>
             <label class="ind-checkbox-label">
                 <input
-                    name="spine_premult"
                     type="checkbox"
                     :checked="debugStyle.drawMeshTriangles"
                     @change="(e) => setDebug('drawMeshTriangles', e.target.checked)"
@@ -82,7 +79,6 @@ function toggleDebugEnabled(val) {
             </label>
             <label class="ind-checkbox-label">
                 <input
-                    name="spine_premult"
                     type="checkbox"
                     :checked="debugStyle.drawBones"
                     @change="(e) => setDebug('drawBones', e.target.checked)"
@@ -91,7 +87,6 @@ function toggleDebugEnabled(val) {
             </label>
             <label class="ind-checkbox-label">
                 <input
-                    name="spine_premult"
                     type="checkbox"
                     :checked="debugStyle.drawPaths"
                     @change="(e) => setDebug('drawPaths', e.target.checked)"
@@ -100,7 +95,6 @@ function toggleDebugEnabled(val) {
             </label>
             <label class="ind-checkbox-label">
                 <input
-                    name="spine_premult"
                     type="checkbox"
                     :checked="debugStyle.drawBoundingBoxes"
                     @change="(e) => setDebug('drawBoundingBoxes', e.target.checked)"
@@ -109,7 +103,6 @@ function toggleDebugEnabled(val) {
             </label>
             <label class="ind-checkbox-label">
                 <input
-                    name="spine_premult"
                     type="checkbox"
                     :checked="debugStyle.drawClipping"
                     @change="(e) => setDebug('drawClipping', e.target.checked)"
@@ -118,7 +111,6 @@ function toggleDebugEnabled(val) {
             </label>
             <label class="ind-checkbox-label">
                 <input
-                    name="spine_premult"
                     type="checkbox"
                     :checked="debugStyle.drawRegionAttachments"
                     @change="(e) => setDebug('drawRegionAttachments', e.target.checked)"

@@ -1,8 +1,7 @@
 <script setup>
 import { useUIStore } from '@/stores/uiStore'
 import { useI18nStore } from '@/stores/i18n'
-import FennecView from '@/fennec-view/FennecView'
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, watch, onUnmounted } from 'vue'
 
 const uiStore = useUIStore()
 const i18n = useI18nStore()
@@ -10,99 +9,35 @@ const i18n = useI18nStore()
 const propertyPanel = computed(() => uiStore.propertyPanel)
 
 const resetLive2dParameters = () => {
-    if (FennecView?.updateNodeProperty) {
-        FennecView.updateNodeProperty('resetLive2dParameters', propertyPanel.value.live2dParametersList)
-    }
+    uiStore.updateCurrentNodeProperty('resetLive2dParameters', propertyPanel.value.live2dParametersList)
 }
 
 const resetLive2dParts = () => {
-    if (FennecView?.updateNodeProperty) {
-        FennecView.updateNodeProperty('resetLive2dParts', propertyPanel.value.live2dPartsList)
-    }
+    uiStore.updateCurrentNodeProperty('resetLive2dParts', propertyPanel.value.live2dPartsList)
 }
 
 let syncTimer = null;
-onMounted(() => {
-    const syncLoop = () => {
-        if (propertyPanel.value.currentNode?.type === 'live2d' && FennecView?.canvas?.box) {
-            const index = propertyPanel.value.currentNode.index
-            const node = FennecView.canvas.box.children[index]
-            if (node?.internalModel?.coreModel) {
-                const coreModel = node.internalModel.coreModel
-                const params = coreModel._model?.parameters
-                if (params && params.ids && params.values) {
-                    const ids = params.ids
-                    const values = params.values
-                    propertyPanel.value.live2dParametersList.forEach(p => {
-                        if (!p.state) {
-                            const idx = ids.indexOf(p.name)
-                            if (idx !== -1 && p.value !== values[idx]) {
-                                p.value = values[idx]
-                            }
-                        }
-                    })
-                } else {
-                    const values = coreModel._parameterValues
-                    const ids = coreModel._parameterIds
-                    if (values && ids && typeof ids.indexOf === 'function') {
-                        propertyPanel.value.live2dParametersList.forEach(p => {
-                            if (!p.state) {
-                                const idx = ids.indexOf(p.name)
-                                if (idx !== -1 && p.value !== values[idx]) {
-                                    p.value = values[idx]
-                                }
-                            }
-                        })
-                    } else if (coreModel.getParameterValueById) {
-                        propertyPanel.value.live2dParametersList.forEach(p => {
-                            if (!p.state) {
-                                let val = coreModel.getParameterValueById(p.name)
-                                if (p.value !== val) p.value = val
-                            }
-                        })
-                    }
-                }
 
-                // Sync parts
-                const parts = coreModel._model?.parts
-                if (parts && parts.ids && parts.opacities) {
-                    const partIds = parts.ids
-                    const partOpacities = parts.opacities
-                    propertyPanel.value.live2dPartsList.forEach(p => {
-                        if (!p.state) {
-                            const idx = partIds.indexOf(p.name)
-                            if (idx !== -1 && p.opacity !== partOpacities[idx]) {
-                                p.opacity = partOpacities[idx]
-                            }
-                        }
-                    })
-                } else {
-                    const partOpacities = coreModel._partOpacities
-                    const partIds = coreModel._partIds
-                    if (partOpacities && partIds && typeof partIds.indexOf === 'function') {
-                        propertyPanel.value.live2dPartsList.forEach(p => {
-                            if (!p.state) {
-                                const idx = partIds.indexOf(p.name)
-                                if (idx !== -1 && p.opacity !== partOpacities[idx]) {
-                                    p.opacity = partOpacities[idx]
-                                }
-                            }
-                        })
-                    } else if (coreModel.getPartOpacityById) {
-                        propertyPanel.value.live2dPartsList.forEach(p => {
-                            if (!p.state) {
-                                let val = coreModel.getPartOpacityById(p.name)
-                                if (p.opacity !== val) p.opacity = val
-                            }
-                        })
-                    }
-                }
-            }
-        }
-        syncTimer = setTimeout(syncLoop, 100) // 10fps is enough for slider update
+const syncLoop = () => {
+    if (propertyPanel.value.currentNode?.type !== 'live2d') {
+        return
     }
-    syncTimer = setTimeout(syncLoop, 100)
-})
+    uiStore.syncCurrentNodeLive2D(
+        propertyPanel.value.live2dParametersList,
+        propertyPanel.value.live2dPartsList
+    )
+    syncTimer = setTimeout(syncLoop, 100) // 10fps is enough for slider update
+}
+
+watch(() => propertyPanel.value.currentNode?.type, (newType) => {
+    if (syncTimer) {
+        clearTimeout(syncTimer)
+        syncTimer = null
+    }
+    if (newType === 'live2d') {
+        syncLoop()
+    }
+}, { immediate: true })
 
 onUnmounted(() => {
     if (syncTimer) clearTimeout(syncTimer)

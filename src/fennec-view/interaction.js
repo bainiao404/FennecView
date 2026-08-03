@@ -1,32 +1,6 @@
 import { useUIStore } from '@/stores/uiStore'
-import { isElectron } from '@/assets/gkd-js-0.2/env.js'
-import { readBlobAsText, readBlobAsArrayBuffer } from './helpers'
-import { blobRegistry } from '@/services/resources/BlobRegistry'
-
-async function getSafeBlobUrl(file) {
-    try {
-        return blobRegistry.createURL(file)
-    } catch (e) {
-        try {
-            const buffer = await readBlobAsArrayBuffer(file)
-            const nativeBlob = new Blob([buffer], { type: file.type || 'application/octet-stream' })
-            return blobRegistry.createURL(nativeBlob)
-        } catch (err) {
-            console.error('Failed to convert file to native Blob:', err)
-            throw err
-        }
-    }
-}
-async function loadTexture(url) {
-    let loadOptions = url
-    if (url && typeof url === 'string' && url.startsWith('blob:')) {
-        loadOptions = {
-            src: url,
-            loadParser: 'loadTextures'
-        }
-    }
-    return await PIXI.Assets.load(loadOptions)
-}
+import { FileScanner } from '@/services/import/utils/fileScanner'
+import { useImportStore } from '@/stores/importStore'
 
 const interactionMethods = {
     onMouseWheel: function (event) {
@@ -104,20 +78,51 @@ const interactionMethods = {
 
     fileHandleDrop: async function (event) {
         event.preventDefault()
-        const { FileScanner } = await import('@/services/import/utils/fileScanner')
-        const { useImportStore } = await import('@/stores/importStore')
-        
-        const files = await FileScanner.scanDrop(event.dataTransfer)
-        if (files && files.length > 0) {
-            const importStore = useImportStore()
-            await importStore.addFiles(files)
+
+        const dataTransfer = event.dataTransfer
+        if (!dataTransfer) return
+
+        // Check if there is any file being dragged
+        let hasFiles = false
+        if (dataTransfer.files && dataTransfer.files.length > 0) {
+            hasFiles = true
+        } else if (dataTransfer.items && dataTransfer.items.length > 0) {
+            for (let i = 0; i < dataTransfer.items.length; i++) {
+                if (dataTransfer.items[i].kind === 'file') {
+                    hasFiles = true
+                    break
+                }
+            }
+        }
+
+        if (hasFiles) {
+            const files = await FileScanner.scanDrop(dataTransfer)
+            if (files && files.length > 0) {
+                const importStore = useImportStore()
+                await importStore.addFiles(files)
+            }
+        } else {
+            // Retrieve string data (URL link, text, hyperlink)
+            const uriList = dataTransfer.getData('text/uri-list')
+            const textPlain = dataTransfer.getData('text/plain')
+            const textHtml = dataTransfer.getData('text/html')
+            
+            const rawText = uriList || textPlain || textHtml
+            if (rawText && rawText.trim()) {
+                const { useLayerStore } = await import('@/stores/layerStore')
+                const layerStore = useLayerStore()
+                layerStore.add({
+                    name: 'DragDropResolveView',
+                    singleton: true,
+                    props: {
+                        rawData: rawText.trim()
+                    }
+                })
+            }
         }
     },
 
     fileHandleDropWeb: async function (files) {
-        const { FileScanner } = await import('@/services/import/utils/fileScanner')
-        const { useImportStore } = await import('@/stores/importStore')
-        
         const scannedFiles = await FileScanner.scanFileInput(files)
         if (scannedFiles && scannedFiles.length > 0) {
             const importStore = useImportStore()

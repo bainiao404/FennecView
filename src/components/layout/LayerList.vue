@@ -400,9 +400,35 @@ function getLayerTypeLabel(layer) {
     color: #2bb372;
 }
 
-.detailed-list .layer-type.image {
+.detailed-list .layer-type.image,
+.detailed-list .layer-type.img {
     background-color: rgba(227, 125, 41, 0.15);
     color: #e37d29;
+}
+
+.detailed-list .layer-type.text {
+    background-color: rgba(156, 39, 176, 0.15);
+    color: #ab47bc;
+}
+
+.detailed-list .layer-type.rect {
+    background-color: rgba(0, 150, 136, 0.15);
+    color: #26a69a;
+}
+
+.detailed-list .layer-type.video {
+    background-color: rgba(233, 30, 99, 0.15);
+    color: #ec407a;
+}
+
+.detailed-list .layer-type.standdiff {
+    background-color: rgba(103, 58, 183, 0.15);
+    color: #7e57c2;
+}
+
+.detailed-list .layer-type.animatedsprite {
+    background-color: rgba(255, 193, 7, 0.15);
+    color: #ffb300;
 }
 
 .detailed-list .layer-actions {

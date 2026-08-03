@@ -1,8 +1,9 @@
 import { BaseProcessor } from './BaseProcessor'
+import { MimeUtil } from '@/utils/MimeUtil';
 import { parseAtlasTextures } from '../utils/atlasParser'
 import FennecView from '@/fennec-view/FennecView'
 import { blobRegistry } from '@/services/resources/BlobRegistry'
-import { isElectron } from '@/assets/gkd-js-0.2/env.js'
+import { fileResourceManager } from '@/services/resources/FileResourceManager'
 
 export class SpineProcessor extends BaseProcessor {
     /**
@@ -91,6 +92,9 @@ export class SpineProcessor extends BaseProcessor {
                         const tName = texName.toLowerCase();
                         if (fName === tName) return true;
                         
+                        // Only match if the file has an image extension!
+                        if (!MimeUtil.isImage(fName)) return false;
+                        
                         const fNameNoExt = fName.substring(0, fName.lastIndexOf('.'));
                         const tNameNoExt = tName.includes('.') ? tName.substring(0, tName.lastIndexOf('.')) : tName;
                         return fNameNoExt === tNameNoExt;
@@ -102,6 +106,9 @@ export class SpineProcessor extends BaseProcessor {
                             const fName = f.name.toLowerCase();
                             const tName = texName.toLowerCase();
                             if (fName === tName) return true;
+                            
+                            // Only match if the file has an image extension!
+                            if (!MimeUtil.isImage(fName)) return false;
                             
                             const fNameNoExt = fName.substring(0, fName.lastIndexOf('.'));
                             const tNameNoExt = tName.includes('.') ? tName.substring(0, tName.lastIndexOf('.')) : tName;
@@ -170,45 +177,69 @@ export class SpineProcessor extends BaseProcessor {
         const atlasFile = importItem.associatedFiles.atlas;
         const foundTexturesMap = importItem.associatedFiles.foundTexturesMap || {};
 
-        // If we are in Electron and using native paths, load from disk directly
-        if (isElectron() && skelFile.isNative) {
-            const localPath = skelFile.path;
-            const nodes = await FennecView.addSpineNode([localPath], Number(importItem.config.textureMode));
-            if (nodes && nodes[0]) {
-                nodes[0].name = importItem.config.name;
+        let spineSrcObj;
+        if (skelFile.isNative) {
+            const localPath = await skelFile.getLoadUrl();
+            fileResourceManager.registerFile(skelFile.name, null, { path: localPath });
+            fileResourceManager.addFileToGroup(importItem.id, localPath);
+
+            let atlasPath = '';
+            if (atlasFile) {
+                atlasPath = await atlasFile.getLoadUrl();
+                fileResourceManager.registerFile(atlasFile.name, null, { path: atlasPath });
+                fileResourceManager.addFileToGroup(importItem.id, atlasPath);
             }
-            return nodes;
+
+            if (importItem.associatedFiles.textures) {
+                for (const texFile of importItem.associatedFiles.textures) {
+                    const texPath = await texFile.getLoadUrl();
+                    fileResourceManager.registerFile(texFile.name, null, { path: texPath });
+                    fileResourceManager.addFileToGroup(importItem.id, texPath);
+                }
+            }
+
+            spineSrcObj = {
+                type: skelFile.name.toLowerCase().endsWith('.skel') ? 'skel' : 'json',
+                path: [localPath, atlasPath, ''],
+                resourceId: importItem.id
+            };
+        } else {
+            const skelBlobUrl = await skelFile.getBlobUrl();
+            fileResourceManager.addFileToGroup(importItem.id, skelBlobUrl);
+
+            const atlasText = await atlasFile.readAsText();
+            // Re-register atlas as Blob URL and pass name to register automatically
+            const atlasBlob = new Blob([atlasText], { type: 'text/plain' });
+            const atlasBlobUrl = blobRegistry.createURL(atlasBlob, atlasFile.name);
+            fileResourceManager.addFileToGroup(importItem.id, atlasBlobUrl);
+
+            // Map textures using the exact names defined in the atlas as keys
+            const imageBlobMaps = {};
+            await Promise.all(
+                Object.entries(foundTexturesMap).map(async ([texName, fileItem]) => {
+                    const texBlobUrl = await fileItem.getBlobUrl();
+                    fileResourceManager.addFileToGroup(importItem.id, texBlobUrl);
+                    imageBlobMaps[texName] = texBlobUrl;
+                })
+            );
+
+            const isSkel = skelFile.name.toLowerCase().endsWith('.skel');
+            spineSrcObj = {
+                type: isSkel ? 'skel' : 'json',
+                path: [skelBlobUrl, atlasBlobUrl, ''],
+                atlasPath: atlasBlobUrl,
+                texturePath: '',
+                textures: imageBlobMaps,
+                name: importItem.config.name || skelFile.name,
+                originalAtlasName: atlasFile.name,
+                resourceId: importItem.id
+            };
         }
-
-        // Web mode: use Blob URLs
-        const skelBlobUrl = await this.getFileBlobUrl(skelFile);
-        const atlasText = await this.readFileAsText(atlasFile);
-        
-        // Re-register atlas as Blob URL
-        const atlasBlob = new Blob([atlasText], { type: 'text/plain' });
-        const atlasBlobUrl = blobRegistry.createURL(atlasBlob);
-
-        // Map textures using the exact names defined in the atlas as keys
-        const imageBlobMaps = {};
-        await Promise.all(
-            Object.entries(foundTexturesMap).map(async ([texName, fileItem]) => {
-                imageBlobMaps[texName] = await this.getFileBlobUrl(fileItem);
-            })
-        );
-
-        const isSkel = skelFile.name.toLowerCase().endsWith('.skel');
-        const spineSrcObj = {
-            type: isSkel ? 'skel' : 'json',
-            path: [skelBlobUrl, atlasBlobUrl, ''],
-            atlasPath: atlasBlobUrl,
-            texturePath: '',
-            textures: imageBlobMaps,
-            name: importItem.config.name || skelFile.name
-        };
 
         const nodes = await FennecView.addSpineNode([spineSrcObj], Number(importItem.config.textureMode));
         if (nodes && nodes[0]) {
             nodes[0].name = importItem.config.name;
+            nodes[0].originalFileName = skelFile.name;
         }
         return nodes;
     }

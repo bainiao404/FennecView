@@ -2,7 +2,6 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useUIStore } from '@/stores/uiStore'
 import FennecView from '@/fennec-view/FennecView'
-import Joystick from './Joystick.vue'
 import CanvasControls from './CanvasControls.vue'
 
 const props = defineProps({
@@ -256,13 +255,22 @@ function handleResize() {
 
 // Watch store events and reactive coordinates to redraw
 watch(
-    [scale, worldPosition, leftOffset, rightOffset, canvasPosition, xRulerWidth, yRulerHeight],
+    [
+        scale,
+        leftOffset,
+        rightOffset,
+        xRulerWidth,
+        yRulerHeight,
+        () => worldPosition.value.x,
+        () => worldPosition.value.y,
+        () => canvasPosition.value?.x,
+        () => canvasPosition.value?.y
+    ],
     () => {
         nextTick(() => {
             drawRulers()
         })
-    },
-    { deep: true },
+    }
 )
 
 onMounted(() => {
@@ -314,9 +322,7 @@ onUnmounted(() => {
             :style="{ right: rightOffset + 'px' }"
         ></div>
 
-        <!-- Canvas controls (Auto center / Screenshot) -->
         <CanvasControls :right-offset="rightOffset" />
-        <Joystick />
     </div>
 </template>
 
