@@ -10,7 +10,27 @@ export default {
             loader: loadVideo,
             previewLoader: loadPreviewVideo,
             serialize: serializeVideo,
-            create: (src, options) => new videoNode(src, options)
+            create: (src, options) => new videoNode(src, options),
+            import: async (importItem) => {
+                const { fileResourceManager } = await import('@/services/resources/FileResourceManager')
+                const fileItem = importItem.associatedFiles.media;
+                const ext = fileItem.name.split('.').pop().toLowerCase();
+                const loadPath = await fileItem.getLoadUrl();
+                fileResourceManager.addFileToGroup(importItem.id, loadPath);
+
+                const videoSrcs = [{
+                    path: [loadPath],
+                    name: importItem.config.name,
+                    type: ext,
+                    resourceId: importItem.id
+                }];
+                const nodes = await FennecView.addVideoNode(videoSrcs);
+                if (nodes && nodes[0]) {
+                    nodes[0].name = importItem.config.name;
+                    nodes[0].originalFileName = fileItem.name;
+                }
+                return nodes;
+            }
         });
 
         FennecView.addVideoNode = async function (list) {

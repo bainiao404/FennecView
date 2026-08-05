@@ -13,7 +13,26 @@ export default {
             previewLoader: loadPreviewSvg,
             serialize: serializeSvg,
             propertyComponent: markRaw(SVGPropertiesPanel),
-            create: (src, options) => new svgNode(src, options)
+            create: (src, options) => new svgNode(src, options),
+            import: async (importItem) => {
+                const { fileResourceManager } = await import('@/services/resources/FileResourceManager')
+                const fileItem = importItem.associatedFiles.media;
+                const loadPath = await fileItem.getLoadUrl();
+                fileResourceManager.addFileToGroup(importItem.id, loadPath);
+
+                const svgSrcs = [{
+                    path: [loadPath],
+                    name: importItem.config.name,
+                    type: 'svg',
+                    resourceId: importItem.id
+                }];
+                const nodes = await FennecView.addSvgNode(svgSrcs);
+                if (nodes && nodes[0]) {
+                    nodes[0].name = importItem.config.name;
+                    nodes[0].originalFileName = fileItem.name;
+                }
+                return nodes;
+            }
         });
 
         FennecView.addSvgNode = async function (list, options = {}) {

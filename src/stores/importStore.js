@@ -6,6 +6,7 @@ import { createFileItem } from '@/services/import/models/FileItem.js'
 import { platformService } from '@/services/platform/PlatformService'
 import { processorRegistry } from '@/services/import/processors/ProcessorRegistry'
 import { MimeUtil } from '@/utils/MimeUtil'
+import { getAssociatedFiles } from '@/services/import/utils/associationResolver'
 
 export const useImportStore = defineStore('import', () => {
     const filesPool = ref([])
@@ -97,7 +98,8 @@ export const useImportStore = defineStore('import', () => {
                                 const { FileScanner } = await import('@/services/import/utils/fileScanner.js')
                                 const localFiles = await FileScanner.scanLocalDirectory(parentDir)
                                 if (localFiles && localFiles.length > 0) {
-                                    expandedFiles.push(...localFiles)
+                                    const associated = await getAssociatedFiles(file, localFiles)
+                                    expandedFiles.push(...associated)
                                     continue
                                 }
                             } catch (e) {
@@ -397,178 +399,6 @@ export const useImportStore = defineStore('import', () => {
         evaluate()
     }
 
-    async function importAnimatedSprite(item) {
-        const PIXI = window.PIXI
-        const FennecView = (await import('@/fennec-view/FennecView')).default
-        const { fileResourceManager } = await import('@/services/resources/FileResourceManager')
-
-        const textures = []
-        const imagesInfo = []
-        
-        async function loadTexture(url) {
-            let loadOptions = url
-            if (url && typeof url === 'string' && url.startsWith('blob:')) {
-                loadOptions = {
-                    src: url,
-                    loadParser: 'loadTextures'
-                }
-            }
-            return await PIXI.Assets.load(loadOptions)
-        }
-
-        const frames = item.associatedFiles?.frames || []
-        for (const fileItem of frames) {
-            const url = await fileItem.getLoadUrl()
-            if (fileItem.isNative) {
-                fileResourceManager.registerFile(fileItem.name, null, { path: url })
-            }
-            fileResourceManager.addFileToGroup(item.id, url)
-            
-            const texture = await loadTexture(url)
-            textures.push(texture)
-            imagesInfo.push({
-                name: fileItem.name,
-                url: url
-            })
-        }
-
-        if (textures.length > 0 && typeof FennecView.addAnimatedSpriteNode === 'function') {
-            const node = await FennecView.addAnimatedSpriteNode(textures, 'images', {
-                name: item.config.name,
-                imagesInfo,
-                resourceId: item.id
-            })
-            if (node && node[0]) {
-                const pixiNode = node[0]
-                const frameDuration = item.config.animationSpeed || 100
-                if (pixiNode.nodeData) {
-                    pixiNode.nodeData.animationSpeed = frameDuration
-                }
-                if (pixiNode.loop !== undefined) {
-                    pixiNode.loop = item.config.loop ?? true
-                }
-            }
-        }
-    }
-
-    async function importSpritesheetGrid(item) {
-        const PIXI = window.PIXI
-        const FennecView = (await import('@/fennec-view/FennecView')).default
-        const { fileResourceManager } = await import('@/services/resources/FileResourceManager')
-
-        const imageFile = item.associatedFiles.image
-        const imageSrc = await imageFile.getLoadUrl()
-        
-        if (imageFile.isNative) {
-            fileResourceManager.registerFile(imageFile.name, null, { path: imageSrc })
-        }
-        fileResourceManager.addFileToGroup(item.id, imageSrc)
-
-        async function loadTexture(url) {
-            let loadOptions = url
-            if (url && typeof url === 'string' && url.startsWith('blob:')) {
-                loadOptions = {
-                    src: url,
-                    loadParser: 'loadTextures'
-                }
-            }
-            return await PIXI.Assets.load(loadOptions)
-        }
-
-        const baseTexture = await loadTexture(imageSrc)
-        const rows = item.config.rows || 1
-        const cols = item.config.cols || 1
-        const frameW = baseTexture.width / cols
-        const frameH = baseTexture.height / rows
-
-        const textures = []
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const rect = new PIXI.Rectangle(c * frameW, r * frameH, frameW, frameH)
-                const frameTexture = new PIXI.Texture({
-                    source: baseTexture.source || baseTexture,
-                    frame: rect
-                })
-                textures.push(frameTexture)
-            }
-        }
-
-        if (textures.length > 0 && typeof FennecView.addAnimatedSpriteNode === 'function') {
-            const node = await FennecView.addAnimatedSpriteNode(textures, 'grid', {
-                name: item.config.name,
-                imageSrc,
-                imageName: imageFile.name,
-                rows,
-                cols,
-                resourceId: item.id
-            })
-            if (node && node[0]) {
-                const pixiNode = node[0]
-                const frameDuration = item.config.animationSpeed || 100
-                if (pixiNode.nodeData) {
-                    pixiNode.nodeData.animationSpeed = frameDuration
-                }
-                if (pixiNode.loop !== undefined) {
-                    pixiNode.loop = item.config.loop ?? true
-                }
-            }
-        }
-    }
-
-    async function importStandDiff(item) {
-        const PIXI = window.PIXI
-        const FennecView = (await import('@/fennec-view/FennecView')).default
-        const { fileResourceManager } = await import('@/services/resources/FileResourceManager')
-
-        const files = item.associatedFiles?.files || []
-        const bgFile = files.find(f => f.name === item.config.backgroundName) || files[0]
-        const fgFiles = files.filter(f => f.name !== bgFile.name)
-
-        const bgUrl = await bgFile.getLoadUrl()
-        if (bgFile.isNative) {
-            fileResourceManager.registerFile(bgFile.name, null, { path: bgUrl })
-        }
-        fileResourceManager.addFileToGroup(item.id, bgUrl)
-
-        const bgInfo = {
-            name: bgFile.name,
-            url: bgUrl
-        }
-
-        const fgList = []
-        for (const fileItem of fgFiles) {
-            const url = await fileItem.getLoadUrl()
-            if (fileItem.isNative) {
-                fileResourceManager.registerFile(fileItem.name, null, { path: url })
-            }
-            fileResourceManager.addFileToGroup(item.id, url)
-
-            const fgConfig = item.config.foregroundConfigs?.find(c => c.name === fileItem.name)
-            fgList.push({
-                name: fileItem.name,
-                url: url,
-                x: (fgConfig?.x !== undefined && fgConfig?.x !== null && fgConfig?.x !== '') ? Number(fgConfig.x) : null,
-                y: (fgConfig?.y !== undefined && fgConfig?.y !== null && fgConfig?.y !== '') ? Number(fgConfig.y) : null
-            })
-        }
-
-        if (typeof FennecView.addStandDiffNode === 'function') {
-            await FennecView.addStandDiffNode(bgInfo, fgList, {
-                name: item.config.name,
-                bgAnchorPreset: item.config.bgAnchorPreset || 'both',
-                bgAnchorX: item.config.bgAnchorX !== undefined ? item.config.bgAnchorX : 0.5,
-                bgAnchorY: item.config.bgAnchorY !== undefined ? item.config.bgAnchorY : 0.5,
-                fgAnchorPreset: item.config.fgAnchorPreset || 'both',
-                fgAnchorX: item.config.fgAnchorX !== undefined ? item.config.fgAnchorX : 0.5,
-                fgAnchorY: item.config.fgAnchorY !== undefined ? item.config.fgAnchorY : 0.5,
-                activeFgKey: fgList[0]?.name || '',
-                defaultFgX: item.config.defaultFgX !== undefined ? item.config.defaultFgX : 0,
-                defaultFgY: item.config.defaultFgY !== undefined ? item.config.defaultFgY : 0,
-                resourceId: item.id
-            })
-        }
-    }
-
     /**
      * Import all completed items to the scene.
      */
@@ -584,16 +414,29 @@ export const useImportStore = defineStore('import', () => {
         let successCount = 0
         let errorCount = 0
 
+        const { nodeRegistry } = await import('@/fennec-view/core/NodeRegistry')
+
+        const typeMap = {
+            'image': 'img',
+            'video': 'video',
+            'svg': 'svg',
+            'spine': 'spine',
+            'live2d': 'live2d',
+            'animated_sprite': 'animatedSprite',
+            'spritesheet_grid': 'animatedSprite',
+            'stand_diff': 'standDiff'
+        }
+
         for (const item of completeItems) {
             try {
-                if (item.type === 'animated_sprite') {
-                    await importAnimatedSprite(item)
-                } else if (item.type === 'spritesheet_grid') {
-                    await importSpritesheetGrid(item)
-                } else if (item.type === 'stand_diff') {
-                    await importStandDiff(item)
-                } else {
+                const registryKey = typeMap[item.type] || item.type
+                const def = nodeRegistry.get(registryKey)
+                if (def && typeof def.import === 'function') {
+                    await def.import(item)
+                } else if (item.processor && typeof item.processor.import === 'function') {
                     await item.processor.import(item)
+                } else {
+                    throw new Error(`未找到针对资源类型 "${item.type}" 的导入处理器。`)
                 }
                 successCount++
             } catch (e) {

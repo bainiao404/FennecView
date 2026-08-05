@@ -10,7 +10,27 @@ export default {
             loader: loadImage,
             previewLoader: loadPreviewImage,
             serialize: serializeImg,
-            create: (src) => new imgNode(src)
+            create: (src) => new imgNode(src),
+            import: async (importItem) => {
+                const { fileResourceManager } = await import('@/services/resources/FileResourceManager')
+                const fileItem = importItem.associatedFiles.media;
+                const ext = fileItem.name.split('.').pop().toLowerCase();
+                const loadPath = await fileItem.getLoadUrl();
+                fileResourceManager.addFileToGroup(importItem.id, loadPath);
+
+                const imgSrcs = [{
+                    path: [loadPath],
+                    name: importItem.config.name,
+                    type: ext,
+                    resourceId: importItem.id
+                }];
+                const nodes = await FennecView.addImageNode(imgSrcs);
+                if (nodes && nodes[0]) {
+                    nodes[0].name = importItem.config.name;
+                    nodes[0].originalFileName = fileItem.name;
+                }
+                return nodes;
+            }
         });
 
         FennecView.addImageNode = async function (list) {
