@@ -144,15 +144,15 @@ export class spineNode extends node {
         if (!node || !node.skeleton) return
         const slotName = t[0]
         const attachmentName = t[1]
-        
+
         let slot = node.skeleton.findSlot(slotName)
         if (!slot) return
-        
+
         let attachment = null
         if (attachmentName) {
             attachment = node.skeleton.getAttachmentByName(slotName, attachmentName)
         }
-        
+
         if (attachment) {
             node.skeleton.setAttachment(slotName, attachmentName)
         } else {
