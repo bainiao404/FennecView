@@ -1,9 +1,10 @@
 import { blobRegistry } from '@/services/resources/BlobRegistry'
 import { fileResourceManager } from '@/services/resources/FileResourceManager'
 
-const PIXI = window.PIXI;
+let PIXI = null;
 
 async function loadTexture(url) {
+    if (!PIXI) PIXI = window.PIXI;
     let loadOptions = url
     if (url && typeof url === 'string' && url.startsWith('blob:')) {
         loadOptions = {
@@ -15,6 +16,7 @@ async function loadTexture(url) {
 }
 
 export async function loadAnimatedSprite(nodeConfig, zip) {
+    if (!PIXI) PIXI = window.PIXI;
     const baseZipDir = 'assets/' + nodeConfig.path + '/'
     let textures = []
     let originalJson = nodeConfig.originalJson || null
@@ -169,6 +171,7 @@ export async function serializeAnimatedSprite(node, dest, randomDir, zipPrefix, 
 }
 
 export async function loadPreviewAnimatedSprite(nodeConfig, mCacheNode) {
+    if (!PIXI) PIXI = window.PIXI;
     let textures = [];
     let originalJson = nodeConfig.originalJson;
     let imageSrc = nodeConfig.imageSrc;

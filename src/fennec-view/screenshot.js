@@ -61,8 +61,8 @@ const screenshotMethods = {
             screenshot = await app.renderer.extract.canvas({
                 target: box,
                 frame: new Rectangle(
-                    localPos.x + world.x,
-                    localPos.y + world.y,
+                    localPos.x,
+                    localPos.y,
                     floorToEven(rect.width / scale),
                     floorToEven(rect.height / scale)
                 )
